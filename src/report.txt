@@ -1,0 +1,3587 @@
+Report for P7
+By Qiwen Zhu
+
+1. Give an English description of your solution strategy. Explain exactly how wires are connected and what you do when you are unable to make a connection.
+
+ algorithm:
+	 *
+	 * Each cell is assigned a path estimate value, the sum of real cost from start to the cell and estimated cost from the cell to the end.
+	 *  1. the smaller the path estimate is, the closer it is to the end. This is because the estimated cost from the cell to the end helps to guide the direction.
+	 *  2. Manhattan distance is used for the estimated cost from the cell to the end.
+	 *  3. In Cell class, startToHereCost is the real cost from start point to current cell; hereToEndEstimate is the distance estimate from the current cell to the end;
+	 *
+	 * For each current cell, we set up these attributes of its legal neighbors*, and add these neighbors into a priority queue, called potentialNexts.
+	 * as long as the potentialNexts is not empty, we set current cell to be the cell with minimum path estimate value in the potentialNexts, in other words, we jump,
+	 *  then we continue to set up the neighbors of the new current cell, and put the old current cell into a temporary visited list.
+	 *  *1. a legal neighbor needs to be:
+	 *      1. on the board
+	 *      2. NOT an obstacle
+	 *      3. NOT used by any path
+	 *
+	 * If the end cell is found in the temporary visited list, meaning a path from start to end is found, then we trace back the path, using the parent attribute.
+	 * Or if the potentialNexts is empty, meaning we have tried every possibility and no path is found, we return null.
+	 *
+	 * NOTE: if multiple cells in the potentialNexts share the same minimum path estimate value, the last interted one should be pop out.
+	 *       this ensures we don't go back to the cells with lower total path estimate but indeed much farther from the end point.
+	 *       to make sure this, a custom comparator that takes the priority queue insert order of each cell is used for the potentialNexts.
+	 * If no path can be found, we don't trace back, just set the path variable to be null.
+
+2. Write a high-level pseudo-code description of your algorithm to route one wire.
+
+ pseudo-code:
+	 *
+	 * currentCell <- start point
+	 * while(potentialNexts is not empty){
+	 *     current cell <- element with min total cost estimate in potentiaNexts
+	 *     for each neighbor of current cell{
+	 *         if neighbor is legal to be added to potentialNexts{
+	 *             calculate its real cost from start point*
+	 *             calculate its estimate cost to end point
+	 *             a global insert order ++
+	 *             potentialNexts.add(neighbor)
+	 *         }
+	 *     }
+	 *     visitedCells.add(currentCell)
+	 *     if(visitedCells.contains(end point)){
+	 *         trace back path from end point
+	 *         return path
+	 *     }
+	 *
+	 * }
+	 *
+	 * return null;
+	 *
+	 *
+
+3. Enumerate any data structures you use along the way and explain their purpose in your algorithm.
+
+ class Cell
+ This is a wrapper for Coord object. It comes with several attributes used to decide a coord's priority level in potentialNexts.
+ It also has a parent attribute to indicate which is the previous cell, used to draw path from start to end.
+
+ total cost estimate
+ This is the sum of real cost from start point to current point and the estimate cost from current point to end point
+
+ potentialNexts
+ This is a PriorityQueue with custom comparator. The priorityQueue make sure that a cell with the minimum total cost estimate will be popped out.
+ The custom comparator makes sure that when multiple cells / coords share the same minimum total cost estimate, the last inserted one will be popped out.
+
+ locker
+ This is a simple structure that is parallel with potentialNexts, to help decide if a neighbor is already in the potentialNexts.
+
+ visitedCells
+ This is a temporary list store every cell / coord that has been visited. by visited, I mean they are explored but are not set as on the final path.
+
+ onPath
+ This is a global cell / coord recorder for all wires on a chip. By maintaining this structure,
+    the previous wires' paths can be recorded, to make sure when working on later wires, they will not step on a cell that is a part of another wire's path.
+
+
+
+4. Tell us about any heuristics you've implemented and why you think they're useful.
+
+ minimum total cost estimate, and last inserted one with minimum total cost estimate:
+     *  1st, compare the pathCostEstimate value (startToCurrCost + currToEndEstimate) to push the cell with minimum pathCostEstimate to the top.
+ 	 *  2nd, if two cell has the same pathCostEstimate, then compare their insertOrder, the one insterted later comes first.
+
+ 	 The cell with minimum total cost estimate implies that the path finding is toward the correct direction.
+ 	 And last inserted rule makes sure that when multiple cells share the same minimum total cost estimate, the last inserted one, also the closer-to-end one, will be popped out.
+
+
+
+ Updating the real cost from start for cell in the potentialNexts:
+ 	 * for a legal neighbor that can be added into the next potential cell list,
+ 	 * if the neighbor is already in the list,
+ 	 *  see if current cell's startToHereCost + 1 > neighbor's startToHereCost
+ 	 *      if so, update neighbor's startToHereCost to be current cell's startToHereCost + 1
+ 	 *
+ 	 * if the neighbor is NOT in the queue,
+ 	 *  calculate its attributes and add it into the queue.
+
+ 	 This is used to preventing path finder suddenly jump to the wrong direction cell far away.
+
+
+
+
+
+
+5. In a table, summarize your successes and failures each of the sample input files that are included with the project.
+
+/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/bin/java -Didea.launcher.port=7538 "-Didea.launcher.bin.path=/Applications/IntelliJ IDEA.app/Contents/bin" -Dfile.encoding=UTF-8 -classpath "/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/charsets.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/deploy.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/cldrdata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/dnsns.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/jaccess.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/jfxrt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/localedata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/nashorn.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/sunec.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/sunjce_provider.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/ext/zipfs.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/javaws.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/jce.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/jfr.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/jfxswt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/jsse.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/management-agent.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/plugin.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/resources.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/jre/lib/rt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/ant-javafx.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/dt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/javafx-mx.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/jconsole.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/packager.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/sa-jdi.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_101.jdk/Contents/Home/lib/tools.jar:/Users/zqw/IdeaProjects/p7/out/production/p7:/Library/Java/Home/lib/hamcrest-core-1.3.jar:/Library/Java/Home/lib/junit-4.12.jar:/Applications/IntelliJ IDEA.app/Contents/lib/idea_rt.jar" com.intellij.rt.execution.application.AppMain PathFinder
+***************************
+* small_00.in has 1 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+**************************************************
+
+***************************
+* small_01.in has 1 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+**************************************************
+
+***************************
+* small_02.in has 1 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+**************************************************
+
+***************************
+* small_03.in has 1 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+**************************************************
+
+***************************
+* small_04.in has 2 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           2            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+**************************************************
+
+***************************
+* small_05.in has 2 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           2            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+**************************************************
+
+***************************
+* small_06.in has 3 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           2            *           1           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        Wire 2         *
+*        Wire 3          *        NULL           *
+**************************************************
+
+***************************
+* small_07.in has 2 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           1           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        Wire 2         *
+**************************************************
+
+***************************
+* small_08.in has 2 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           1           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        Wire 2         *
+**************************************************
+
+***************************
+* small_09.in has 4 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           1            *           3           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        Wire 2         *
+*         NULL           *         Wire 3        *
+*         NULL           *         Wire 4        *
+**************************************************
+
+***************************
+* small_10.in has 4 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           4            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+**************************************************
+
+***************************
+* small_11.in has 2 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*           2            *           0           *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+**************************************************
+
+*****************************
+* medium_01.in has 21 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*          21            *          0            *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+**************************************************
+
+*****************************
+* medium_02.in has 41 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*          41            *          0            *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+*        Wire 22         *        NULL           *
+*        Wire 23         *        NULL           *
+*        Wire 24         *        NULL           *
+*        Wire 25         *        NULL           *
+*        Wire 26         *        NULL           *
+*        Wire 27         *        NULL           *
+*        Wire 28         *        NULL           *
+*        Wire 29         *        NULL           *
+*        Wire 30         *        NULL           *
+*        Wire 31         *        NULL           *
+*        Wire 32         *        NULL           *
+*        Wire 33         *        NULL           *
+*        Wire 34         *        NULL           *
+*        Wire 35         *        NULL           *
+*        Wire 36         *        NULL           *
+*        Wire 37         *        NULL           *
+*        Wire 38         *        NULL           *
+*        Wire 39         *        NULL           *
+*        Wire 40         *        NULL           *
+*        Wire 41         *        NULL           *
+**************************************************
+
+**************************
+* big_01.in has 83 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*          83            *          0            *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+*        Wire 22         *        NULL           *
+*        Wire 23         *        NULL           *
+*        Wire 24         *        NULL           *
+*        Wire 25         *        NULL           *
+*        Wire 26         *        NULL           *
+*        Wire 27         *        NULL           *
+*        Wire 28         *        NULL           *
+*        Wire 29         *        NULL           *
+*        Wire 30         *        NULL           *
+*        Wire 31         *        NULL           *
+*        Wire 32         *        NULL           *
+*        Wire 33         *        NULL           *
+*        Wire 34         *        NULL           *
+*        Wire 35         *        NULL           *
+*        Wire 36         *        NULL           *
+*        Wire 37         *        NULL           *
+*        Wire 38         *        NULL           *
+*        Wire 39         *        NULL           *
+*        Wire 40         *        NULL           *
+*        Wire 41         *        NULL           *
+*        Wire 42         *        NULL           *
+*        Wire 43         *        NULL           *
+*        Wire 44         *        NULL           *
+*        Wire 45         *        NULL           *
+*        Wire 46         *        NULL           *
+*        Wire 47         *        NULL           *
+*        Wire 48         *        NULL           *
+*        Wire 49         *        NULL           *
+*        Wire 50         *        NULL           *
+*        Wire 51         *        NULL           *
+*        Wire 52         *        NULL           *
+*        Wire 53         *        NULL           *
+*        Wire 54         *        NULL           *
+*        Wire 55         *        NULL           *
+*        Wire 56         *        NULL           *
+*        Wire 57         *        NULL           *
+*        Wire 58         *        NULL           *
+*        Wire 59         *        NULL           *
+*        Wire 60         *        NULL           *
+*        Wire 61         *        NULL           *
+*        Wire 62         *        NULL           *
+*        Wire 63         *        NULL           *
+*        Wire 64         *        NULL           *
+*        Wire 65         *        NULL           *
+*        Wire 66         *        NULL           *
+*        Wire 67         *        NULL           *
+*        Wire 68         *        NULL           *
+*        Wire 69         *        NULL           *
+*        Wire 70         *        NULL           *
+*        Wire 71         *        NULL           *
+*        Wire 72         *        NULL           *
+*        Wire 73         *        NULL           *
+*        Wire 74         *        NULL           *
+*        Wire 75         *        NULL           *
+*        Wire 76         *        NULL           *
+*        Wire 77         *        NULL           *
+*        Wire 78         *        NULL           *
+*        Wire 79         *        NULL           *
+*        Wire 80         *        NULL           *
+*        Wire 81         *        NULL           *
+*        Wire 82         *        NULL           *
+*        Wire 83         *        NULL           *
+**************************************************
+
+***************************
+* big_02.in has 124 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*          124           *          0            *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+*        Wire 22         *        NULL           *
+*        Wire 23         *        NULL           *
+*        Wire 24         *        NULL           *
+*        Wire 25         *        NULL           *
+*        Wire 26         *        NULL           *
+*        Wire 27         *        NULL           *
+*        Wire 28         *        NULL           *
+*        Wire 29         *        NULL           *
+*        Wire 30         *        NULL           *
+*        Wire 31         *        NULL           *
+*        Wire 32         *        NULL           *
+*        Wire 33         *        NULL           *
+*        Wire 34         *        NULL           *
+*        Wire 35         *        NULL           *
+*        Wire 36         *        NULL           *
+*        Wire 37         *        NULL           *
+*        Wire 38         *        NULL           *
+*        Wire 39         *        NULL           *
+*        Wire 40         *        NULL           *
+*        Wire 41         *        NULL           *
+*        Wire 42         *        NULL           *
+*        Wire 43         *        NULL           *
+*        Wire 44         *        NULL           *
+*        Wire 45         *        NULL           *
+*        Wire 46         *        NULL           *
+*        Wire 47         *        NULL           *
+*        Wire 48         *        NULL           *
+*        Wire 49         *        NULL           *
+*        Wire 50         *        NULL           *
+*        Wire 51         *        NULL           *
+*        Wire 52         *        NULL           *
+*        Wire 53         *        NULL           *
+*        Wire 54         *        NULL           *
+*        Wire 55         *        NULL           *
+*        Wire 56         *        NULL           *
+*        Wire 57         *        NULL           *
+*        Wire 58         *        NULL           *
+*        Wire 59         *        NULL           *
+*        Wire 60         *        NULL           *
+*        Wire 61         *        NULL           *
+*        Wire 62         *        NULL           *
+*        Wire 63         *        NULL           *
+*        Wire 64         *        NULL           *
+*        Wire 65         *        NULL           *
+*        Wire 66         *        NULL           *
+*        Wire 67         *        NULL           *
+*        Wire 68         *        NULL           *
+*        Wire 69         *        NULL           *
+*        Wire 70         *        NULL           *
+*        Wire 71         *        NULL           *
+*        Wire 72         *        NULL           *
+*        Wire 73         *        NULL           *
+*        Wire 74         *        NULL           *
+*        Wire 75         *        NULL           *
+*        Wire 76         *        NULL           *
+*        Wire 77         *        NULL           *
+*        Wire 78         *        NULL           *
+*        Wire 79         *        NULL           *
+*        Wire 80         *        NULL           *
+*        Wire 81         *        NULL           *
+*        Wire 82         *        NULL           *
+*        Wire 83         *        NULL           *
+*        Wire 84         *        NULL           *
+*        Wire 85         *        NULL           *
+*        Wire 86         *        NULL           *
+*        Wire 87         *        NULL           *
+*        Wire 88         *        NULL           *
+*        Wire 89         *        NULL           *
+*        Wire 90         *        NULL           *
+*        Wire 91         *        NULL           *
+*        Wire 92         *        NULL           *
+*        Wire 93         *        NULL           *
+*        Wire 94         *        NULL           *
+*        Wire 95         *        NULL           *
+*        Wire 96         *        NULL           *
+*        Wire 97         *        NULL           *
+*        Wire 98         *        NULL           *
+*        Wire 99         *        NULL           *
+*       Wire 100         *       NULL            *
+*       Wire 101         *       NULL            *
+*       Wire 102         *       NULL            *
+*       Wire 103         *       NULL            *
+*       Wire 104         *       NULL            *
+*       Wire 105         *       NULL            *
+*       Wire 106         *       NULL            *
+*       Wire 107         *       NULL            *
+*       Wire 108         *       NULL            *
+*       Wire 109         *       NULL            *
+*       Wire 110         *       NULL            *
+*       Wire 111         *       NULL            *
+*       Wire 112         *       NULL            *
+*       Wire 113         *       NULL            *
+*       Wire 114         *       NULL            *
+*       Wire 115         *       NULL            *
+*       Wire 116         *       NULL            *
+*       Wire 117         *       NULL            *
+*       Wire 118         *       NULL            *
+*       Wire 119         *       NULL            *
+*       Wire 120         *       NULL            *
+*       Wire 121         *       NULL            *
+*       Wire 122         *       NULL            *
+*       Wire 123         *       NULL            *
+*       Wire 124         *       NULL            *
+**************************************************
+
+***************************
+* big_03.in has 185 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*          185           *          0            *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+*        Wire 22         *        NULL           *
+*        Wire 23         *        NULL           *
+*        Wire 24         *        NULL           *
+*        Wire 25         *        NULL           *
+*        Wire 26         *        NULL           *
+*        Wire 27         *        NULL           *
+*        Wire 28         *        NULL           *
+*        Wire 29         *        NULL           *
+*        Wire 30         *        NULL           *
+*        Wire 31         *        NULL           *
+*        Wire 32         *        NULL           *
+*        Wire 33         *        NULL           *
+*        Wire 34         *        NULL           *
+*        Wire 35         *        NULL           *
+*        Wire 36         *        NULL           *
+*        Wire 37         *        NULL           *
+*        Wire 38         *        NULL           *
+*        Wire 39         *        NULL           *
+*        Wire 40         *        NULL           *
+*        Wire 41         *        NULL           *
+*        Wire 42         *        NULL           *
+*        Wire 43         *        NULL           *
+*        Wire 44         *        NULL           *
+*        Wire 45         *        NULL           *
+*        Wire 46         *        NULL           *
+*        Wire 47         *        NULL           *
+*        Wire 48         *        NULL           *
+*        Wire 49         *        NULL           *
+*        Wire 50         *        NULL           *
+*        Wire 51         *        NULL           *
+*        Wire 52         *        NULL           *
+*        Wire 53         *        NULL           *
+*        Wire 54         *        NULL           *
+*        Wire 55         *        NULL           *
+*        Wire 56         *        NULL           *
+*        Wire 57         *        NULL           *
+*        Wire 58         *        NULL           *
+*        Wire 59         *        NULL           *
+*        Wire 60         *        NULL           *
+*        Wire 61         *        NULL           *
+*        Wire 62         *        NULL           *
+*        Wire 63         *        NULL           *
+*        Wire 64         *        NULL           *
+*        Wire 65         *        NULL           *
+*        Wire 66         *        NULL           *
+*        Wire 67         *        NULL           *
+*        Wire 68         *        NULL           *
+*        Wire 69         *        NULL           *
+*        Wire 70         *        NULL           *
+*        Wire 71         *        NULL           *
+*        Wire 72         *        NULL           *
+*        Wire 73         *        NULL           *
+*        Wire 74         *        NULL           *
+*        Wire 75         *        NULL           *
+*        Wire 76         *        NULL           *
+*        Wire 77         *        NULL           *
+*        Wire 78         *        NULL           *
+*        Wire 79         *        NULL           *
+*        Wire 80         *        NULL           *
+*        Wire 81         *        NULL           *
+*        Wire 82         *        NULL           *
+*        Wire 83         *        NULL           *
+*        Wire 84         *        NULL           *
+*        Wire 85         *        NULL           *
+*        Wire 86         *        NULL           *
+*        Wire 87         *        NULL           *
+*        Wire 88         *        NULL           *
+*        Wire 89         *        NULL           *
+*        Wire 90         *        NULL           *
+*        Wire 91         *        NULL           *
+*        Wire 92         *        NULL           *
+*        Wire 93         *        NULL           *
+*        Wire 94         *        NULL           *
+*        Wire 95         *        NULL           *
+*        Wire 96         *        NULL           *
+*        Wire 97         *        NULL           *
+*        Wire 98         *        NULL           *
+*        Wire 99         *        NULL           *
+*       Wire 100         *       NULL            *
+*       Wire 101         *       NULL            *
+*       Wire 102         *       NULL            *
+*       Wire 103         *       NULL            *
+*       Wire 104         *       NULL            *
+*       Wire 105         *       NULL            *
+*       Wire 106         *       NULL            *
+*       Wire 107         *       NULL            *
+*       Wire 108         *       NULL            *
+*       Wire 109         *       NULL            *
+*       Wire 110         *       NULL            *
+*       Wire 111         *       NULL            *
+*       Wire 112         *       NULL            *
+*       Wire 113         *       NULL            *
+*       Wire 114         *       NULL            *
+*       Wire 115         *       NULL            *
+*       Wire 116         *       NULL            *
+*       Wire 117         *       NULL            *
+*       Wire 118         *       NULL            *
+*       Wire 119         *       NULL            *
+*       Wire 120         *       NULL            *
+*       Wire 121         *       NULL            *
+*       Wire 122         *       NULL            *
+*       Wire 123         *       NULL            *
+*       Wire 124         *       NULL            *
+*       Wire 125         *       NULL            *
+*       Wire 126         *       NULL            *
+*       Wire 127         *       NULL            *
+*       Wire 128         *       NULL            *
+*       Wire 129         *       NULL            *
+*       Wire 130         *       NULL            *
+*       Wire 131         *       NULL            *
+*       Wire 132         *       NULL            *
+*       Wire 133         *       NULL            *
+*       Wire 134         *       NULL            *
+*       Wire 135         *       NULL            *
+*       Wire 136         *       NULL            *
+*       Wire 137         *       NULL            *
+*       Wire 138         *       NULL            *
+*       Wire 139         *       NULL            *
+*       Wire 140         *       NULL            *
+*       Wire 141         *       NULL            *
+*       Wire 142         *       NULL            *
+*       Wire 143         *       NULL            *
+*       Wire 144         *       NULL            *
+*       Wire 145         *       NULL            *
+*       Wire 146         *       NULL            *
+*       Wire 147         *       NULL            *
+*       Wire 148         *       NULL            *
+*       Wire 149         *       NULL            *
+*       Wire 150         *       NULL            *
+*       Wire 151         *       NULL            *
+*       Wire 152         *       NULL            *
+*       Wire 153         *       NULL            *
+*       Wire 154         *       NULL            *
+*       Wire 155         *       NULL            *
+*       Wire 156         *       NULL            *
+*       Wire 157         *       NULL            *
+*       Wire 158         *       NULL            *
+*       Wire 159         *       NULL            *
+*       Wire 160         *       NULL            *
+*       Wire 161         *       NULL            *
+*       Wire 162         *       NULL            *
+*       Wire 163         *       NULL            *
+*       Wire 164         *       NULL            *
+*       Wire 165         *       NULL            *
+*       Wire 166         *       NULL            *
+*       Wire 167         *       NULL            *
+*       Wire 168         *       NULL            *
+*       Wire 169         *       NULL            *
+*       Wire 170         *       NULL            *
+*       Wire 171         *       NULL            *
+*       Wire 172         *       NULL            *
+*       Wire 173         *       NULL            *
+*       Wire 174         *       NULL            *
+*       Wire 175         *       NULL            *
+*       Wire 176         *       NULL            *
+*       Wire 177         *       NULL            *
+*       Wire 178         *       NULL            *
+*       Wire 179         *       NULL            *
+*       Wire 180         *       NULL            *
+*       Wire 181         *       NULL            *
+*       Wire 182         *       NULL            *
+*       Wire 183         *       NULL            *
+*       Wire 184         *       NULL            *
+*       Wire 185         *       NULL            *
+**************************************************
+
+***************************
+* big_04.in has 730 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*          727           *          3            *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        Wire 725       *
+*        Wire 2          *        Wire 727       *
+*        Wire 3          *        Wire 728       *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+*        Wire 22         *        NULL           *
+*        Wire 23         *        NULL           *
+*        Wire 24         *        NULL           *
+*        Wire 25         *        NULL           *
+*        Wire 26         *        NULL           *
+*        Wire 27         *        NULL           *
+*        Wire 28         *        NULL           *
+*        Wire 29         *        NULL           *
+*        Wire 30         *        NULL           *
+*        Wire 31         *        NULL           *
+*        Wire 32         *        NULL           *
+*        Wire 33         *        NULL           *
+*        Wire 34         *        NULL           *
+*        Wire 35         *        NULL           *
+*        Wire 36         *        NULL           *
+*        Wire 37         *        NULL           *
+*        Wire 38         *        NULL           *
+*        Wire 39         *        NULL           *
+*        Wire 40         *        NULL           *
+*        Wire 41         *        NULL           *
+*        Wire 42         *        NULL           *
+*        Wire 43         *        NULL           *
+*        Wire 44         *        NULL           *
+*        Wire 45         *        NULL           *
+*        Wire 46         *        NULL           *
+*        Wire 47         *        NULL           *
+*        Wire 48         *        NULL           *
+*        Wire 49         *        NULL           *
+*        Wire 50         *        NULL           *
+*        Wire 51         *        NULL           *
+*        Wire 52         *        NULL           *
+*        Wire 53         *        NULL           *
+*        Wire 54         *        NULL           *
+*        Wire 55         *        NULL           *
+*        Wire 56         *        NULL           *
+*        Wire 57         *        NULL           *
+*        Wire 58         *        NULL           *
+*        Wire 59         *        NULL           *
+*        Wire 60         *        NULL           *
+*        Wire 61         *        NULL           *
+*        Wire 62         *        NULL           *
+*        Wire 63         *        NULL           *
+*        Wire 64         *        NULL           *
+*        Wire 65         *        NULL           *
+*        Wire 66         *        NULL           *
+*        Wire 67         *        NULL           *
+*        Wire 68         *        NULL           *
+*        Wire 69         *        NULL           *
+*        Wire 70         *        NULL           *
+*        Wire 71         *        NULL           *
+*        Wire 72         *        NULL           *
+*        Wire 73         *        NULL           *
+*        Wire 74         *        NULL           *
+*        Wire 75         *        NULL           *
+*        Wire 76         *        NULL           *
+*        Wire 77         *        NULL           *
+*        Wire 78         *        NULL           *
+*        Wire 79         *        NULL           *
+*        Wire 80         *        NULL           *
+*        Wire 81         *        NULL           *
+*        Wire 82         *        NULL           *
+*        Wire 83         *        NULL           *
+*        Wire 84         *        NULL           *
+*        Wire 85         *        NULL           *
+*        Wire 86         *        NULL           *
+*        Wire 87         *        NULL           *
+*        Wire 88         *        NULL           *
+*        Wire 89         *        NULL           *
+*        Wire 90         *        NULL           *
+*        Wire 91         *        NULL           *
+*        Wire 92         *        NULL           *
+*        Wire 93         *        NULL           *
+*        Wire 94         *        NULL           *
+*        Wire 95         *        NULL           *
+*        Wire 96         *        NULL           *
+*        Wire 97         *        NULL           *
+*        Wire 98         *        NULL           *
+*        Wire 99         *        NULL           *
+*       Wire 100         *       NULL            *
+*       Wire 101         *       NULL            *
+*       Wire 102         *       NULL            *
+*       Wire 103         *       NULL            *
+*       Wire 104         *       NULL            *
+*       Wire 105         *       NULL            *
+*       Wire 106         *       NULL            *
+*       Wire 107         *       NULL            *
+*       Wire 108         *       NULL            *
+*       Wire 109         *       NULL            *
+*       Wire 110         *       NULL            *
+*       Wire 111         *       NULL            *
+*       Wire 112         *       NULL            *
+*       Wire 113         *       NULL            *
+*       Wire 114         *       NULL            *
+*       Wire 115         *       NULL            *
+*       Wire 116         *       NULL            *
+*       Wire 117         *       NULL            *
+*       Wire 118         *       NULL            *
+*       Wire 119         *       NULL            *
+*       Wire 120         *       NULL            *
+*       Wire 121         *       NULL            *
+*       Wire 122         *       NULL            *
+*       Wire 123         *       NULL            *
+*       Wire 124         *       NULL            *
+*       Wire 125         *       NULL            *
+*       Wire 126         *       NULL            *
+*       Wire 127         *       NULL            *
+*       Wire 128         *       NULL            *
+*       Wire 129         *       NULL            *
+*       Wire 130         *       NULL            *
+*       Wire 131         *       NULL            *
+*       Wire 132         *       NULL            *
+*       Wire 133         *       NULL            *
+*       Wire 134         *       NULL            *
+*       Wire 135         *       NULL            *
+*       Wire 136         *       NULL            *
+*       Wire 137         *       NULL            *
+*       Wire 138         *       NULL            *
+*       Wire 139         *       NULL            *
+*       Wire 140         *       NULL            *
+*       Wire 141         *       NULL            *
+*       Wire 142         *       NULL            *
+*       Wire 143         *       NULL            *
+*       Wire 144         *       NULL            *
+*       Wire 145         *       NULL            *
+*       Wire 146         *       NULL            *
+*       Wire 147         *       NULL            *
+*       Wire 148         *       NULL            *
+*       Wire 149         *       NULL            *
+*       Wire 150         *       NULL            *
+*       Wire 151         *       NULL            *
+*       Wire 152         *       NULL            *
+*       Wire 153         *       NULL            *
+*       Wire 154         *       NULL            *
+*       Wire 155         *       NULL            *
+*       Wire 156         *       NULL            *
+*       Wire 157         *       NULL            *
+*       Wire 158         *       NULL            *
+*       Wire 159         *       NULL            *
+*       Wire 160         *       NULL            *
+*       Wire 161         *       NULL            *
+*       Wire 162         *       NULL            *
+*       Wire 163         *       NULL            *
+*       Wire 164         *       NULL            *
+*       Wire 165         *       NULL            *
+*       Wire 166         *       NULL            *
+*       Wire 167         *       NULL            *
+*       Wire 168         *       NULL            *
+*       Wire 169         *       NULL            *
+*       Wire 170         *       NULL            *
+*       Wire 171         *       NULL            *
+*       Wire 172         *       NULL            *
+*       Wire 173         *       NULL            *
+*       Wire 174         *       NULL            *
+*       Wire 175         *       NULL            *
+*       Wire 176         *       NULL            *
+*       Wire 177         *       NULL            *
+*       Wire 178         *       NULL            *
+*       Wire 179         *       NULL            *
+*       Wire 180         *       NULL            *
+*       Wire 181         *       NULL            *
+*       Wire 182         *       NULL            *
+*       Wire 183         *       NULL            *
+*       Wire 184         *       NULL            *
+*       Wire 185         *       NULL            *
+*       Wire 186         *       NULL            *
+*       Wire 187         *       NULL            *
+*       Wire 188         *       NULL            *
+*       Wire 189         *       NULL            *
+*       Wire 190         *       NULL            *
+*       Wire 191         *       NULL            *
+*       Wire 192         *       NULL            *
+*       Wire 193         *       NULL            *
+*       Wire 194         *       NULL            *
+*       Wire 195         *       NULL            *
+*       Wire 196         *       NULL            *
+*       Wire 197         *       NULL            *
+*       Wire 198         *       NULL            *
+*       Wire 199         *       NULL            *
+*       Wire 200         *       NULL            *
+*       Wire 201         *       NULL            *
+*       Wire 202         *       NULL            *
+*       Wire 203         *       NULL            *
+*       Wire 204         *       NULL            *
+*       Wire 205         *       NULL            *
+*       Wire 206         *       NULL            *
+*       Wire 207         *       NULL            *
+*       Wire 208         *       NULL            *
+*       Wire 209         *       NULL            *
+*       Wire 210         *       NULL            *
+*       Wire 211         *       NULL            *
+*       Wire 212         *       NULL            *
+*       Wire 213         *       NULL            *
+*       Wire 214         *       NULL            *
+*       Wire 215         *       NULL            *
+*       Wire 216         *       NULL            *
+*       Wire 217         *       NULL            *
+*       Wire 218         *       NULL            *
+*       Wire 219         *       NULL            *
+*       Wire 220         *       NULL            *
+*       Wire 221         *       NULL            *
+*       Wire 222         *       NULL            *
+*       Wire 223         *       NULL            *
+*       Wire 224         *       NULL            *
+*       Wire 225         *       NULL            *
+*       Wire 226         *       NULL            *
+*       Wire 227         *       NULL            *
+*       Wire 228         *       NULL            *
+*       Wire 229         *       NULL            *
+*       Wire 230         *       NULL            *
+*       Wire 231         *       NULL            *
+*       Wire 232         *       NULL            *
+*       Wire 233         *       NULL            *
+*       Wire 234         *       NULL            *
+*       Wire 235         *       NULL            *
+*       Wire 236         *       NULL            *
+*       Wire 237         *       NULL            *
+*       Wire 238         *       NULL            *
+*       Wire 239         *       NULL            *
+*       Wire 240         *       NULL            *
+*       Wire 241         *       NULL            *
+*       Wire 242         *       NULL            *
+*       Wire 243         *       NULL            *
+*       Wire 244         *       NULL            *
+*       Wire 245         *       NULL            *
+*       Wire 246         *       NULL            *
+*       Wire 247         *       NULL            *
+*       Wire 248         *       NULL            *
+*       Wire 249         *       NULL            *
+*       Wire 250         *       NULL            *
+*       Wire 251         *       NULL            *
+*       Wire 252         *       NULL            *
+*       Wire 253         *       NULL            *
+*       Wire 254         *       NULL            *
+*       Wire 255         *       NULL            *
+*       Wire 256         *       NULL            *
+*       Wire 257         *       NULL            *
+*       Wire 258         *       NULL            *
+*       Wire 259         *       NULL            *
+*       Wire 260         *       NULL            *
+*       Wire 261         *       NULL            *
+*       Wire 262         *       NULL            *
+*       Wire 263         *       NULL            *
+*       Wire 264         *       NULL            *
+*       Wire 265         *       NULL            *
+*       Wire 266         *       NULL            *
+*       Wire 267         *       NULL            *
+*       Wire 268         *       NULL            *
+*       Wire 269         *       NULL            *
+*       Wire 270         *       NULL            *
+*       Wire 271         *       NULL            *
+*       Wire 272         *       NULL            *
+*       Wire 273         *       NULL            *
+*       Wire 274         *       NULL            *
+*       Wire 275         *       NULL            *
+*       Wire 276         *       NULL            *
+*       Wire 277         *       NULL            *
+*       Wire 278         *       NULL            *
+*       Wire 279         *       NULL            *
+*       Wire 280         *       NULL            *
+*       Wire 281         *       NULL            *
+*       Wire 282         *       NULL            *
+*       Wire 283         *       NULL            *
+*       Wire 284         *       NULL            *
+*       Wire 285         *       NULL            *
+*       Wire 286         *       NULL            *
+*       Wire 287         *       NULL            *
+*       Wire 288         *       NULL            *
+*       Wire 289         *       NULL            *
+*       Wire 290         *       NULL            *
+*       Wire 291         *       NULL            *
+*       Wire 292         *       NULL            *
+*       Wire 293         *       NULL            *
+*       Wire 294         *       NULL            *
+*       Wire 295         *       NULL            *
+*       Wire 296         *       NULL            *
+*       Wire 297         *       NULL            *
+*       Wire 298         *       NULL            *
+*       Wire 299         *       NULL            *
+*       Wire 300         *       NULL            *
+*       Wire 301         *       NULL            *
+*       Wire 302         *       NULL            *
+*       Wire 303         *       NULL            *
+*       Wire 304         *       NULL            *
+*       Wire 305         *       NULL            *
+*       Wire 306         *       NULL            *
+*       Wire 307         *       NULL            *
+*       Wire 308         *       NULL            *
+*       Wire 309         *       NULL            *
+*       Wire 310         *       NULL            *
+*       Wire 311         *       NULL            *
+*       Wire 312         *       NULL            *
+*       Wire 313         *       NULL            *
+*       Wire 314         *       NULL            *
+*       Wire 315         *       NULL            *
+*       Wire 316         *       NULL            *
+*       Wire 317         *       NULL            *
+*       Wire 318         *       NULL            *
+*       Wire 319         *       NULL            *
+*       Wire 320         *       NULL            *
+*       Wire 321         *       NULL            *
+*       Wire 322         *       NULL            *
+*       Wire 323         *       NULL            *
+*       Wire 324         *       NULL            *
+*       Wire 325         *       NULL            *
+*       Wire 326         *       NULL            *
+*       Wire 327         *       NULL            *
+*       Wire 328         *       NULL            *
+*       Wire 329         *       NULL            *
+*       Wire 330         *       NULL            *
+*       Wire 331         *       NULL            *
+*       Wire 332         *       NULL            *
+*       Wire 333         *       NULL            *
+*       Wire 334         *       NULL            *
+*       Wire 335         *       NULL            *
+*       Wire 336         *       NULL            *
+*       Wire 337         *       NULL            *
+*       Wire 338         *       NULL            *
+*       Wire 339         *       NULL            *
+*       Wire 340         *       NULL            *
+*       Wire 341         *       NULL            *
+*       Wire 342         *       NULL            *
+*       Wire 343         *       NULL            *
+*       Wire 344         *       NULL            *
+*       Wire 345         *       NULL            *
+*       Wire 346         *       NULL            *
+*       Wire 347         *       NULL            *
+*       Wire 348         *       NULL            *
+*       Wire 349         *       NULL            *
+*       Wire 350         *       NULL            *
+*       Wire 351         *       NULL            *
+*       Wire 352         *       NULL            *
+*       Wire 353         *       NULL            *
+*       Wire 354         *       NULL            *
+*       Wire 355         *       NULL            *
+*       Wire 356         *       NULL            *
+*       Wire 357         *       NULL            *
+*       Wire 358         *       NULL            *
+*       Wire 359         *       NULL            *
+*       Wire 360         *       NULL            *
+*       Wire 361         *       NULL            *
+*       Wire 362         *       NULL            *
+*       Wire 363         *       NULL            *
+*       Wire 364         *       NULL            *
+*       Wire 365         *       NULL            *
+*       Wire 366         *       NULL            *
+*       Wire 367         *       NULL            *
+*       Wire 368         *       NULL            *
+*       Wire 369         *       NULL            *
+*       Wire 370         *       NULL            *
+*       Wire 371         *       NULL            *
+*       Wire 372         *       NULL            *
+*       Wire 373         *       NULL            *
+*       Wire 374         *       NULL            *
+*       Wire 375         *       NULL            *
+*       Wire 376         *       NULL            *
+*       Wire 377         *       NULL            *
+*       Wire 378         *       NULL            *
+*       Wire 379         *       NULL            *
+*       Wire 380         *       NULL            *
+*       Wire 381         *       NULL            *
+*       Wire 382         *       NULL            *
+*       Wire 383         *       NULL            *
+*       Wire 384         *       NULL            *
+*       Wire 385         *       NULL            *
+*       Wire 386         *       NULL            *
+*       Wire 387         *       NULL            *
+*       Wire 388         *       NULL            *
+*       Wire 389         *       NULL            *
+*       Wire 390         *       NULL            *
+*       Wire 391         *       NULL            *
+*       Wire 392         *       NULL            *
+*       Wire 393         *       NULL            *
+*       Wire 394         *       NULL            *
+*       Wire 395         *       NULL            *
+*       Wire 396         *       NULL            *
+*       Wire 397         *       NULL            *
+*       Wire 398         *       NULL            *
+*       Wire 399         *       NULL            *
+*       Wire 400         *       NULL            *
+*       Wire 401         *       NULL            *
+*       Wire 402         *       NULL            *
+*       Wire 403         *       NULL            *
+*       Wire 404         *       NULL            *
+*       Wire 405         *       NULL            *
+*       Wire 406         *       NULL            *
+*       Wire 407         *       NULL            *
+*       Wire 408         *       NULL            *
+*       Wire 409         *       NULL            *
+*       Wire 410         *       NULL            *
+*       Wire 411         *       NULL            *
+*       Wire 412         *       NULL            *
+*       Wire 413         *       NULL            *
+*       Wire 414         *       NULL            *
+*       Wire 415         *       NULL            *
+*       Wire 416         *       NULL            *
+*       Wire 417         *       NULL            *
+*       Wire 418         *       NULL            *
+*       Wire 419         *       NULL            *
+*       Wire 420         *       NULL            *
+*       Wire 421         *       NULL            *
+*       Wire 422         *       NULL            *
+*       Wire 423         *       NULL            *
+*       Wire 424         *       NULL            *
+*       Wire 425         *       NULL            *
+*       Wire 426         *       NULL            *
+*       Wire 427         *       NULL            *
+*       Wire 428         *       NULL            *
+*       Wire 429         *       NULL            *
+*       Wire 430         *       NULL            *
+*       Wire 431         *       NULL            *
+*       Wire 432         *       NULL            *
+*       Wire 433         *       NULL            *
+*       Wire 434         *       NULL            *
+*       Wire 435         *       NULL            *
+*       Wire 436         *       NULL            *
+*       Wire 437         *       NULL            *
+*       Wire 438         *       NULL            *
+*       Wire 439         *       NULL            *
+*       Wire 440         *       NULL            *
+*       Wire 441         *       NULL            *
+*       Wire 442         *       NULL            *
+*       Wire 443         *       NULL            *
+*       Wire 444         *       NULL            *
+*       Wire 445         *       NULL            *
+*       Wire 446         *       NULL            *
+*       Wire 447         *       NULL            *
+*       Wire 448         *       NULL            *
+*       Wire 449         *       NULL            *
+*       Wire 450         *       NULL            *
+*       Wire 451         *       NULL            *
+*       Wire 452         *       NULL            *
+*       Wire 453         *       NULL            *
+*       Wire 454         *       NULL            *
+*       Wire 455         *       NULL            *
+*       Wire 456         *       NULL            *
+*       Wire 457         *       NULL            *
+*       Wire 458         *       NULL            *
+*       Wire 459         *       NULL            *
+*       Wire 460         *       NULL            *
+*       Wire 461         *       NULL            *
+*       Wire 462         *       NULL            *
+*       Wire 463         *       NULL            *
+*       Wire 464         *       NULL            *
+*       Wire 465         *       NULL            *
+*       Wire 466         *       NULL            *
+*       Wire 467         *       NULL            *
+*       Wire 468         *       NULL            *
+*       Wire 469         *       NULL            *
+*       Wire 470         *       NULL            *
+*       Wire 471         *       NULL            *
+*       Wire 472         *       NULL            *
+*       Wire 473         *       NULL            *
+*       Wire 474         *       NULL            *
+*       Wire 475         *       NULL            *
+*       Wire 476         *       NULL            *
+*       Wire 477         *       NULL            *
+*       Wire 478         *       NULL            *
+*       Wire 479         *       NULL            *
+*       Wire 480         *       NULL            *
+*       Wire 481         *       NULL            *
+*       Wire 482         *       NULL            *
+*       Wire 483         *       NULL            *
+*       Wire 484         *       NULL            *
+*       Wire 485         *       NULL            *
+*       Wire 486         *       NULL            *
+*       Wire 487         *       NULL            *
+*       Wire 488         *       NULL            *
+*       Wire 489         *       NULL            *
+*       Wire 490         *       NULL            *
+*       Wire 491         *       NULL            *
+*       Wire 492         *       NULL            *
+*       Wire 493         *       NULL            *
+*       Wire 494         *       NULL            *
+*       Wire 495         *       NULL            *
+*       Wire 496         *       NULL            *
+*       Wire 497         *       NULL            *
+*       Wire 498         *       NULL            *
+*       Wire 499         *       NULL            *
+*       Wire 500         *       NULL            *
+*       Wire 501         *       NULL            *
+*       Wire 502         *       NULL            *
+*       Wire 503         *       NULL            *
+*       Wire 504         *       NULL            *
+*       Wire 505         *       NULL            *
+*       Wire 506         *       NULL            *
+*       Wire 507         *       NULL            *
+*       Wire 508         *       NULL            *
+*       Wire 509         *       NULL            *
+*       Wire 510         *       NULL            *
+*       Wire 511         *       NULL            *
+*       Wire 512         *       NULL            *
+*       Wire 513         *       NULL            *
+*       Wire 514         *       NULL            *
+*       Wire 515         *       NULL            *
+*       Wire 516         *       NULL            *
+*       Wire 517         *       NULL            *
+*       Wire 518         *       NULL            *
+*       Wire 519         *       NULL            *
+*       Wire 520         *       NULL            *
+*       Wire 521         *       NULL            *
+*       Wire 522         *       NULL            *
+*       Wire 523         *       NULL            *
+*       Wire 524         *       NULL            *
+*       Wire 525         *       NULL            *
+*       Wire 526         *       NULL            *
+*       Wire 527         *       NULL            *
+*       Wire 528         *       NULL            *
+*       Wire 529         *       NULL            *
+*       Wire 530         *       NULL            *
+*       Wire 531         *       NULL            *
+*       Wire 532         *       NULL            *
+*       Wire 533         *       NULL            *
+*       Wire 534         *       NULL            *
+*       Wire 535         *       NULL            *
+*       Wire 536         *       NULL            *
+*       Wire 537         *       NULL            *
+*       Wire 538         *       NULL            *
+*       Wire 539         *       NULL            *
+*       Wire 540         *       NULL            *
+*       Wire 541         *       NULL            *
+*       Wire 542         *       NULL            *
+*       Wire 543         *       NULL            *
+*       Wire 544         *       NULL            *
+*       Wire 545         *       NULL            *
+*       Wire 546         *       NULL            *
+*       Wire 547         *       NULL            *
+*       Wire 548         *       NULL            *
+*       Wire 549         *       NULL            *
+*       Wire 550         *       NULL            *
+*       Wire 551         *       NULL            *
+*       Wire 552         *       NULL            *
+*       Wire 553         *       NULL            *
+*       Wire 554         *       NULL            *
+*       Wire 555         *       NULL            *
+*       Wire 556         *       NULL            *
+*       Wire 557         *       NULL            *
+*       Wire 558         *       NULL            *
+*       Wire 559         *       NULL            *
+*       Wire 560         *       NULL            *
+*       Wire 561         *       NULL            *
+*       Wire 562         *       NULL            *
+*       Wire 563         *       NULL            *
+*       Wire 564         *       NULL            *
+*       Wire 565         *       NULL            *
+*       Wire 566         *       NULL            *
+*       Wire 567         *       NULL            *
+*       Wire 568         *       NULL            *
+*       Wire 569         *       NULL            *
+*       Wire 570         *       NULL            *
+*       Wire 571         *       NULL            *
+*       Wire 572         *       NULL            *
+*       Wire 573         *       NULL            *
+*       Wire 574         *       NULL            *
+*       Wire 575         *       NULL            *
+*       Wire 576         *       NULL            *
+*       Wire 577         *       NULL            *
+*       Wire 578         *       NULL            *
+*       Wire 579         *       NULL            *
+*       Wire 580         *       NULL            *
+*       Wire 581         *       NULL            *
+*       Wire 582         *       NULL            *
+*       Wire 583         *       NULL            *
+*       Wire 584         *       NULL            *
+*       Wire 585         *       NULL            *
+*       Wire 586         *       NULL            *
+*       Wire 587         *       NULL            *
+*       Wire 588         *       NULL            *
+*       Wire 589         *       NULL            *
+*       Wire 590         *       NULL            *
+*       Wire 591         *       NULL            *
+*       Wire 592         *       NULL            *
+*       Wire 593         *       NULL            *
+*       Wire 594         *       NULL            *
+*       Wire 595         *       NULL            *
+*       Wire 596         *       NULL            *
+*       Wire 597         *       NULL            *
+*       Wire 598         *       NULL            *
+*       Wire 599         *       NULL            *
+*       Wire 600         *       NULL            *
+*       Wire 601         *       NULL            *
+*       Wire 602         *       NULL            *
+*       Wire 603         *       NULL            *
+*       Wire 604         *       NULL            *
+*       Wire 605         *       NULL            *
+*       Wire 606         *       NULL            *
+*       Wire 607         *       NULL            *
+*       Wire 608         *       NULL            *
+*       Wire 609         *       NULL            *
+*       Wire 610         *       NULL            *
+*       Wire 611         *       NULL            *
+*       Wire 612         *       NULL            *
+*       Wire 613         *       NULL            *
+*       Wire 614         *       NULL            *
+*       Wire 615         *       NULL            *
+*       Wire 616         *       NULL            *
+*       Wire 617         *       NULL            *
+*       Wire 618         *       NULL            *
+*       Wire 619         *       NULL            *
+*       Wire 620         *       NULL            *
+*       Wire 621         *       NULL            *
+*       Wire 622         *       NULL            *
+*       Wire 623         *       NULL            *
+*       Wire 624         *       NULL            *
+*       Wire 625         *       NULL            *
+*       Wire 626         *       NULL            *
+*       Wire 627         *       NULL            *
+*       Wire 628         *       NULL            *
+*       Wire 629         *       NULL            *
+*       Wire 630         *       NULL            *
+*       Wire 631         *       NULL            *
+*       Wire 632         *       NULL            *
+*       Wire 633         *       NULL            *
+*       Wire 634         *       NULL            *
+*       Wire 635         *       NULL            *
+*       Wire 636         *       NULL            *
+*       Wire 637         *       NULL            *
+*       Wire 638         *       NULL            *
+*       Wire 639         *       NULL            *
+*       Wire 640         *       NULL            *
+*       Wire 641         *       NULL            *
+*       Wire 642         *       NULL            *
+*       Wire 643         *       NULL            *
+*       Wire 644         *       NULL            *
+*       Wire 645         *       NULL            *
+*       Wire 646         *       NULL            *
+*       Wire 647         *       NULL            *
+*       Wire 648         *       NULL            *
+*       Wire 649         *       NULL            *
+*       Wire 650         *       NULL            *
+*       Wire 651         *       NULL            *
+*       Wire 652         *       NULL            *
+*       Wire 653         *       NULL            *
+*       Wire 654         *       NULL            *
+*       Wire 655         *       NULL            *
+*       Wire 656         *       NULL            *
+*       Wire 657         *       NULL            *
+*       Wire 658         *       NULL            *
+*       Wire 659         *       NULL            *
+*       Wire 660         *       NULL            *
+*       Wire 661         *       NULL            *
+*       Wire 662         *       NULL            *
+*       Wire 663         *       NULL            *
+*       Wire 664         *       NULL            *
+*       Wire 665         *       NULL            *
+*       Wire 666         *       NULL            *
+*       Wire 667         *       NULL            *
+*       Wire 668         *       NULL            *
+*       Wire 669         *       NULL            *
+*       Wire 670         *       NULL            *
+*       Wire 671         *       NULL            *
+*       Wire 672         *       NULL            *
+*       Wire 673         *       NULL            *
+*       Wire 674         *       NULL            *
+*       Wire 675         *       NULL            *
+*       Wire 676         *       NULL            *
+*       Wire 677         *       NULL            *
+*       Wire 678         *       NULL            *
+*       Wire 679         *       NULL            *
+*       Wire 680         *       NULL            *
+*       Wire 681         *       NULL            *
+*       Wire 682         *       NULL            *
+*       Wire 683         *       NULL            *
+*       Wire 684         *       NULL            *
+*       Wire 685         *       NULL            *
+*       Wire 686         *       NULL            *
+*       Wire 687         *       NULL            *
+*       Wire 688         *       NULL            *
+*       Wire 689         *       NULL            *
+*       Wire 690         *       NULL            *
+*       Wire 691         *       NULL            *
+*       Wire 692         *       NULL            *
+*       Wire 693         *       NULL            *
+*       Wire 694         *       NULL            *
+*       Wire 695         *       NULL            *
+*       Wire 696         *       NULL            *
+*       Wire 697         *       NULL            *
+*       Wire 698         *       NULL            *
+*       Wire 699         *       NULL            *
+*       Wire 700         *       NULL            *
+*       Wire 701         *       NULL            *
+*       Wire 702         *       NULL            *
+*       Wire 703         *       NULL            *
+*       Wire 704         *       NULL            *
+*       Wire 705         *       NULL            *
+*       Wire 706         *       NULL            *
+*       Wire 707         *       NULL            *
+*       Wire 708         *       NULL            *
+*       Wire 709         *       NULL            *
+*       Wire 710         *       NULL            *
+*       Wire 711         *       NULL            *
+*       Wire 712         *       NULL            *
+*       Wire 713         *       NULL            *
+*       Wire 714         *       NULL            *
+*       Wire 715         *       NULL            *
+*       Wire 716         *       NULL            *
+*       Wire 717         *       NULL            *
+*       Wire 718         *       NULL            *
+*       Wire 719         *       NULL            *
+*       Wire 720         *       NULL            *
+*       Wire 721         *       NULL            *
+*       Wire 722         *       NULL            *
+*       Wire 723         *       NULL            *
+*       Wire 724         *       NULL            *
+*       Wire 726         *       NULL            *
+*       Wire 729         *       NULL            *
+*       Wire 730         *       NULL            *
+**************************************************
+
+*****************************
+* huge_01.in has 2010 wires *
+**************************************************
+*                        *                       *
+*     # of success       *     # of failure      *
+*                        *                       *
+**************************************************
+*                        *                       *
+*         2010           *         0             *
+*                        *                       *
+**************************************************
+*                        *                       *
+*        Wire 1          *        NULL           *
+*        Wire 2          *        NULL           *
+*        Wire 3          *        NULL           *
+*        Wire 4          *        NULL           *
+*        Wire 5          *        NULL           *
+*        Wire 6          *        NULL           *
+*        Wire 7          *        NULL           *
+*        Wire 8          *        NULL           *
+*        Wire 9          *        NULL           *
+*        Wire 10         *        NULL           *
+*        Wire 11         *        NULL           *
+*        Wire 12         *        NULL           *
+*        Wire 13         *        NULL           *
+*        Wire 14         *        NULL           *
+*        Wire 15         *        NULL           *
+*        Wire 16         *        NULL           *
+*        Wire 17         *        NULL           *
+*        Wire 18         *        NULL           *
+*        Wire 19         *        NULL           *
+*        Wire 20         *        NULL           *
+*        Wire 21         *        NULL           *
+*        Wire 22         *        NULL           *
+*        Wire 23         *        NULL           *
+*        Wire 24         *        NULL           *
+*        Wire 25         *        NULL           *
+*        Wire 26         *        NULL           *
+*        Wire 27         *        NULL           *
+*        Wire 28         *        NULL           *
+*        Wire 29         *        NULL           *
+*        Wire 30         *        NULL           *
+*        Wire 31         *        NULL           *
+*        Wire 32         *        NULL           *
+*        Wire 33         *        NULL           *
+*        Wire 34         *        NULL           *
+*        Wire 35         *        NULL           *
+*        Wire 36         *        NULL           *
+*        Wire 37         *        NULL           *
+*        Wire 38         *        NULL           *
+*        Wire 39         *        NULL           *
+*        Wire 40         *        NULL           *
+*        Wire 41         *        NULL           *
+*        Wire 42         *        NULL           *
+*        Wire 43         *        NULL           *
+*        Wire 44         *        NULL           *
+*        Wire 45         *        NULL           *
+*        Wire 46         *        NULL           *
+*        Wire 47         *        NULL           *
+*        Wire 48         *        NULL           *
+*        Wire 49         *        NULL           *
+*        Wire 50         *        NULL           *
+*        Wire 51         *        NULL           *
+*        Wire 52         *        NULL           *
+*        Wire 53         *        NULL           *
+*        Wire 54         *        NULL           *
+*        Wire 55         *        NULL           *
+*        Wire 56         *        NULL           *
+*        Wire 57         *        NULL           *
+*        Wire 58         *        NULL           *
+*        Wire 59         *        NULL           *
+*        Wire 60         *        NULL           *
+*        Wire 61         *        NULL           *
+*        Wire 62         *        NULL           *
+*        Wire 63         *        NULL           *
+*        Wire 64         *        NULL           *
+*        Wire 65         *        NULL           *
+*        Wire 66         *        NULL           *
+*        Wire 67         *        NULL           *
+*        Wire 68         *        NULL           *
+*        Wire 69         *        NULL           *
+*        Wire 70         *        NULL           *
+*        Wire 71         *        NULL           *
+*        Wire 72         *        NULL           *
+*        Wire 73         *        NULL           *
+*        Wire 74         *        NULL           *
+*        Wire 75         *        NULL           *
+*        Wire 76         *        NULL           *
+*        Wire 77         *        NULL           *
+*        Wire 78         *        NULL           *
+*        Wire 79         *        NULL           *
+*        Wire 80         *        NULL           *
+*        Wire 81         *        NULL           *
+*        Wire 82         *        NULL           *
+*        Wire 83         *        NULL           *
+*        Wire 84         *        NULL           *
+*        Wire 85         *        NULL           *
+*        Wire 86         *        NULL           *
+*        Wire 87         *        NULL           *
+*        Wire 88         *        NULL           *
+*        Wire 89         *        NULL           *
+*        Wire 90         *        NULL           *
+*        Wire 91         *        NULL           *
+*        Wire 92         *        NULL           *
+*        Wire 93         *        NULL           *
+*        Wire 94         *        NULL           *
+*        Wire 95         *        NULL           *
+*        Wire 96         *        NULL           *
+*        Wire 97         *        NULL           *
+*        Wire 98         *        NULL           *
+*        Wire 99         *        NULL           *
+*       Wire 100         *       NULL            *
+*       Wire 101         *       NULL            *
+*       Wire 102         *       NULL            *
+*       Wire 103         *       NULL            *
+*       Wire 104         *       NULL            *
+*       Wire 105         *       NULL            *
+*       Wire 106         *       NULL            *
+*       Wire 107         *       NULL            *
+*       Wire 108         *       NULL            *
+*       Wire 109         *       NULL            *
+*       Wire 110         *       NULL            *
+*       Wire 111         *       NULL            *
+*       Wire 112         *       NULL            *
+*       Wire 113         *       NULL            *
+*       Wire 114         *       NULL            *
+*       Wire 115         *       NULL            *
+*       Wire 116         *       NULL            *
+*       Wire 117         *       NULL            *
+*       Wire 118         *       NULL            *
+*       Wire 119         *       NULL            *
+*       Wire 120         *       NULL            *
+*       Wire 121         *       NULL            *
+*       Wire 122         *       NULL            *
+*       Wire 123         *       NULL            *
+*       Wire 124         *       NULL            *
+*       Wire 125         *       NULL            *
+*       Wire 126         *       NULL            *
+*       Wire 127         *       NULL            *
+*       Wire 128         *       NULL            *
+*       Wire 129         *       NULL            *
+*       Wire 130         *       NULL            *
+*       Wire 131         *       NULL            *
+*       Wire 132         *       NULL            *
+*       Wire 133         *       NULL            *
+*       Wire 134         *       NULL            *
+*       Wire 135         *       NULL            *
+*       Wire 136         *       NULL            *
+*       Wire 137         *       NULL            *
+*       Wire 138         *       NULL            *
+*       Wire 139         *       NULL            *
+*       Wire 140         *       NULL            *
+*       Wire 141         *       NULL            *
+*       Wire 142         *       NULL            *
+*       Wire 143         *       NULL            *
+*       Wire 144         *       NULL            *
+*       Wire 145         *       NULL            *
+*       Wire 146         *       NULL            *
+*       Wire 147         *       NULL            *
+*       Wire 148         *       NULL            *
+*       Wire 149         *       NULL            *
+*       Wire 150         *       NULL            *
+*       Wire 151         *       NULL            *
+*       Wire 152         *       NULL            *
+*       Wire 153         *       NULL            *
+*       Wire 154         *       NULL            *
+*       Wire 155         *       NULL            *
+*       Wire 156         *       NULL            *
+*       Wire 157         *       NULL            *
+*       Wire 158         *       NULL            *
+*       Wire 159         *       NULL            *
+*       Wire 160         *       NULL            *
+*       Wire 161         *       NULL            *
+*       Wire 162         *       NULL            *
+*       Wire 163         *       NULL            *
+*       Wire 164         *       NULL            *
+*       Wire 165         *       NULL            *
+*       Wire 166         *       NULL            *
+*       Wire 167         *       NULL            *
+*       Wire 168         *       NULL            *
+*       Wire 169         *       NULL            *
+*       Wire 170         *       NULL            *
+*       Wire 171         *       NULL            *
+*       Wire 172         *       NULL            *
+*       Wire 173         *       NULL            *
+*       Wire 174         *       NULL            *
+*       Wire 175         *       NULL            *
+*       Wire 176         *       NULL            *
+*       Wire 177         *       NULL            *
+*       Wire 178         *       NULL            *
+*       Wire 179         *       NULL            *
+*       Wire 180         *       NULL            *
+*       Wire 181         *       NULL            *
+*       Wire 182         *       NULL            *
+*       Wire 183         *       NULL            *
+*       Wire 184         *       NULL            *
+*       Wire 185         *       NULL            *
+*       Wire 186         *       NULL            *
+*       Wire 187         *       NULL            *
+*       Wire 188         *       NULL            *
+*       Wire 189         *       NULL            *
+*       Wire 190         *       NULL            *
+*       Wire 191         *       NULL            *
+*       Wire 192         *       NULL            *
+*       Wire 193         *       NULL            *
+*       Wire 194         *       NULL            *
+*       Wire 195         *       NULL            *
+*       Wire 196         *       NULL            *
+*       Wire 197         *       NULL            *
+*       Wire 198         *       NULL            *
+*       Wire 199         *       NULL            *
+*       Wire 200         *       NULL            *
+*       Wire 201         *       NULL            *
+*       Wire 202         *       NULL            *
+*       Wire 203         *       NULL            *
+*       Wire 204         *       NULL            *
+*       Wire 205         *       NULL            *
+*       Wire 206         *       NULL            *
+*       Wire 207         *       NULL            *
+*       Wire 208         *       NULL            *
+*       Wire 209         *       NULL            *
+*       Wire 210         *       NULL            *
+*       Wire 211         *       NULL            *
+*       Wire 212         *       NULL            *
+*       Wire 213         *       NULL            *
+*       Wire 214         *       NULL            *
+*       Wire 215         *       NULL            *
+*       Wire 216         *       NULL            *
+*       Wire 217         *       NULL            *
+*       Wire 218         *       NULL            *
+*       Wire 219         *       NULL            *
+*       Wire 220         *       NULL            *
+*       Wire 221         *       NULL            *
+*       Wire 222         *       NULL            *
+*       Wire 223         *       NULL            *
+*       Wire 224         *       NULL            *
+*       Wire 225         *       NULL            *
+*       Wire 226         *       NULL            *
+*       Wire 227         *       NULL            *
+*       Wire 228         *       NULL            *
+*       Wire 229         *       NULL            *
+*       Wire 230         *       NULL            *
+*       Wire 231         *       NULL            *
+*       Wire 232         *       NULL            *
+*       Wire 233         *       NULL            *
+*       Wire 234         *       NULL            *
+*       Wire 235         *       NULL            *
+*       Wire 236         *       NULL            *
+*       Wire 237         *       NULL            *
+*       Wire 238         *       NULL            *
+*       Wire 239         *       NULL            *
+*       Wire 240         *       NULL            *
+*       Wire 241         *       NULL            *
+*       Wire 242         *       NULL            *
+*       Wire 243         *       NULL            *
+*       Wire 244         *       NULL            *
+*       Wire 245         *       NULL            *
+*       Wire 246         *       NULL            *
+*       Wire 247         *       NULL            *
+*       Wire 248         *       NULL            *
+*       Wire 249         *       NULL            *
+*       Wire 250         *       NULL            *
+*       Wire 251         *       NULL            *
+*       Wire 252         *       NULL            *
+*       Wire 253         *       NULL            *
+*       Wire 254         *       NULL            *
+*       Wire 255         *       NULL            *
+*       Wire 256         *       NULL            *
+*       Wire 257         *       NULL            *
+*       Wire 258         *       NULL            *
+*       Wire 259         *       NULL            *
+*       Wire 260         *       NULL            *
+*       Wire 261         *       NULL            *
+*       Wire 262         *       NULL            *
+*       Wire 263         *       NULL            *
+*       Wire 264         *       NULL            *
+*       Wire 265         *       NULL            *
+*       Wire 266         *       NULL            *
+*       Wire 267         *       NULL            *
+*       Wire 268         *       NULL            *
+*       Wire 269         *       NULL            *
+*       Wire 270         *       NULL            *
+*       Wire 271         *       NULL            *
+*       Wire 272         *       NULL            *
+*       Wire 273         *       NULL            *
+*       Wire 274         *       NULL            *
+*       Wire 275         *       NULL            *
+*       Wire 276         *       NULL            *
+*       Wire 277         *       NULL            *
+*       Wire 278         *       NULL            *
+*       Wire 279         *       NULL            *
+*       Wire 280         *       NULL            *
+*       Wire 281         *       NULL            *
+*       Wire 282         *       NULL            *
+*       Wire 283         *       NULL            *
+*       Wire 284         *       NULL            *
+*       Wire 285         *       NULL            *
+*       Wire 286         *       NULL            *
+*       Wire 287         *       NULL            *
+*       Wire 288         *       NULL            *
+*       Wire 289         *       NULL            *
+*       Wire 290         *       NULL            *
+*       Wire 291         *       NULL            *
+*       Wire 292         *       NULL            *
+*       Wire 293         *       NULL            *
+*       Wire 294         *       NULL            *
+*       Wire 295         *       NULL            *
+*       Wire 296         *       NULL            *
+*       Wire 297         *       NULL            *
+*       Wire 298         *       NULL            *
+*       Wire 299         *       NULL            *
+*       Wire 300         *       NULL            *
+*       Wire 301         *       NULL            *
+*       Wire 302         *       NULL            *
+*       Wire 303         *       NULL            *
+*       Wire 304         *       NULL            *
+*       Wire 305         *       NULL            *
+*       Wire 306         *       NULL            *
+*       Wire 307         *       NULL            *
+*       Wire 308         *       NULL            *
+*       Wire 309         *       NULL            *
+*       Wire 310         *       NULL            *
+*       Wire 311         *       NULL            *
+*       Wire 312         *       NULL            *
+*       Wire 313         *       NULL            *
+*       Wire 314         *       NULL            *
+*       Wire 315         *       NULL            *
+*       Wire 316         *       NULL            *
+*       Wire 317         *       NULL            *
+*       Wire 318         *       NULL            *
+*       Wire 319         *       NULL            *
+*       Wire 320         *       NULL            *
+*       Wire 321         *       NULL            *
+*       Wire 322         *       NULL            *
+*       Wire 323         *       NULL            *
+*       Wire 324         *       NULL            *
+*       Wire 325         *       NULL            *
+*       Wire 326         *       NULL            *
+*       Wire 327         *       NULL            *
+*       Wire 328         *       NULL            *
+*       Wire 329         *       NULL            *
+*       Wire 330         *       NULL            *
+*       Wire 331         *       NULL            *
+*       Wire 332         *       NULL            *
+*       Wire 333         *       NULL            *
+*       Wire 334         *       NULL            *
+*       Wire 335         *       NULL            *
+*       Wire 336         *       NULL            *
+*       Wire 337         *       NULL            *
+*       Wire 338         *       NULL            *
+*       Wire 339         *       NULL            *
+*       Wire 340         *       NULL            *
+*       Wire 341         *       NULL            *
+*       Wire 342         *       NULL            *
+*       Wire 343         *       NULL            *
+*       Wire 344         *       NULL            *
+*       Wire 345         *       NULL            *
+*       Wire 346         *       NULL            *
+*       Wire 347         *       NULL            *
+*       Wire 348         *       NULL            *
+*       Wire 349         *       NULL            *
+*       Wire 350         *       NULL            *
+*       Wire 351         *       NULL            *
+*       Wire 352         *       NULL            *
+*       Wire 353         *       NULL            *
+*       Wire 354         *       NULL            *
+*       Wire 355         *       NULL            *
+*       Wire 356         *       NULL            *
+*       Wire 357         *       NULL            *
+*       Wire 358         *       NULL            *
+*       Wire 359         *       NULL            *
+*       Wire 360         *       NULL            *
+*       Wire 361         *       NULL            *
+*       Wire 362         *       NULL            *
+*       Wire 363         *       NULL            *
+*       Wire 364         *       NULL            *
+*       Wire 365         *       NULL            *
+*       Wire 366         *       NULL            *
+*       Wire 367         *       NULL            *
+*       Wire 368         *       NULL            *
+*       Wire 369         *       NULL            *
+*       Wire 370         *       NULL            *
+*       Wire 371         *       NULL            *
+*       Wire 372         *       NULL            *
+*       Wire 373         *       NULL            *
+*       Wire 374         *       NULL            *
+*       Wire 375         *       NULL            *
+*       Wire 376         *       NULL            *
+*       Wire 377         *       NULL            *
+*       Wire 378         *       NULL            *
+*       Wire 379         *       NULL            *
+*       Wire 380         *       NULL            *
+*       Wire 381         *       NULL            *
+*       Wire 382         *       NULL            *
+*       Wire 383         *       NULL            *
+*       Wire 384         *       NULL            *
+*       Wire 385         *       NULL            *
+*       Wire 386         *       NULL            *
+*       Wire 387         *       NULL            *
+*       Wire 388         *       NULL            *
+*       Wire 389         *       NULL            *
+*       Wire 390         *       NULL            *
+*       Wire 391         *       NULL            *
+*       Wire 392         *       NULL            *
+*       Wire 393         *       NULL            *
+*       Wire 394         *       NULL            *
+*       Wire 395         *       NULL            *
+*       Wire 396         *       NULL            *
+*       Wire 397         *       NULL            *
+*       Wire 398         *       NULL            *
+*       Wire 399         *       NULL            *
+*       Wire 400         *       NULL            *
+*       Wire 401         *       NULL            *
+*       Wire 402         *       NULL            *
+*       Wire 403         *       NULL            *
+*       Wire 404         *       NULL            *
+*       Wire 405         *       NULL            *
+*       Wire 406         *       NULL            *
+*       Wire 407         *       NULL            *
+*       Wire 408         *       NULL            *
+*       Wire 409         *       NULL            *
+*       Wire 410         *       NULL            *
+*       Wire 411         *       NULL            *
+*       Wire 412         *       NULL            *
+*       Wire 413         *       NULL            *
+*       Wire 414         *       NULL            *
+*       Wire 415         *       NULL            *
+*       Wire 416         *       NULL            *
+*       Wire 417         *       NULL            *
+*       Wire 418         *       NULL            *
+*       Wire 419         *       NULL            *
+*       Wire 420         *       NULL            *
+*       Wire 421         *       NULL            *
+*       Wire 422         *       NULL            *
+*       Wire 423         *       NULL            *
+*       Wire 424         *       NULL            *
+*       Wire 425         *       NULL            *
+*       Wire 426         *       NULL            *
+*       Wire 427         *       NULL            *
+*       Wire 428         *       NULL            *
+*       Wire 429         *       NULL            *
+*       Wire 430         *       NULL            *
+*       Wire 431         *       NULL            *
+*       Wire 432         *       NULL            *
+*       Wire 433         *       NULL            *
+*       Wire 434         *       NULL            *
+*       Wire 435         *       NULL            *
+*       Wire 436         *       NULL            *
+*       Wire 437         *       NULL            *
+*       Wire 438         *       NULL            *
+*       Wire 439         *       NULL            *
+*       Wire 440         *       NULL            *
+*       Wire 441         *       NULL            *
+*       Wire 442         *       NULL            *
+*       Wire 443         *       NULL            *
+*       Wire 444         *       NULL            *
+*       Wire 445         *       NULL            *
+*       Wire 446         *       NULL            *
+*       Wire 447         *       NULL            *
+*       Wire 448         *       NULL            *
+*       Wire 449         *       NULL            *
+*       Wire 450         *       NULL            *
+*       Wire 451         *       NULL            *
+*       Wire 452         *       NULL            *
+*       Wire 453         *       NULL            *
+*       Wire 454         *       NULL            *
+*       Wire 455         *       NULL            *
+*       Wire 456         *       NULL            *
+*       Wire 457         *       NULL            *
+*       Wire 458         *       NULL            *
+*       Wire 459         *       NULL            *
+*       Wire 460         *       NULL            *
+*       Wire 461         *       NULL            *
+*       Wire 462         *       NULL            *
+*       Wire 463         *       NULL            *
+*       Wire 464         *       NULL            *
+*       Wire 465         *       NULL            *
+*       Wire 466         *       NULL            *
+*       Wire 467         *       NULL            *
+*       Wire 468         *       NULL            *
+*       Wire 469         *       NULL            *
+*       Wire 470         *       NULL            *
+*       Wire 471         *       NULL            *
+*       Wire 472         *       NULL            *
+*       Wire 473         *       NULL            *
+*       Wire 474         *       NULL            *
+*       Wire 475         *       NULL            *
+*       Wire 476         *       NULL            *
+*       Wire 477         *       NULL            *
+*       Wire 478         *       NULL            *
+*       Wire 479         *       NULL            *
+*       Wire 480         *       NULL            *
+*       Wire 481         *       NULL            *
+*       Wire 482         *       NULL            *
+*       Wire 483         *       NULL            *
+*       Wire 484         *       NULL            *
+*       Wire 485         *       NULL            *
+*       Wire 486         *       NULL            *
+*       Wire 487         *       NULL            *
+*       Wire 488         *       NULL            *
+*       Wire 489         *       NULL            *
+*       Wire 490         *       NULL            *
+*       Wire 491         *       NULL            *
+*       Wire 492         *       NULL            *
+*       Wire 493         *       NULL            *
+*       Wire 494         *       NULL            *
+*       Wire 495         *       NULL            *
+*       Wire 496         *       NULL            *
+*       Wire 497         *       NULL            *
+*       Wire 498         *       NULL            *
+*       Wire 499         *       NULL            *
+*       Wire 500         *       NULL            *
+*       Wire 501         *       NULL            *
+*       Wire 502         *       NULL            *
+*       Wire 503         *       NULL            *
+*       Wire 504         *       NULL            *
+*       Wire 505         *       NULL            *
+*       Wire 506         *       NULL            *
+*       Wire 507         *       NULL            *
+*       Wire 508         *       NULL            *
+*       Wire 509         *       NULL            *
+*       Wire 510         *       NULL            *
+*       Wire 511         *       NULL            *
+*       Wire 512         *       NULL            *
+*       Wire 513         *       NULL            *
+*       Wire 514         *       NULL            *
+*       Wire 515         *       NULL            *
+*       Wire 516         *       NULL            *
+*       Wire 517         *       NULL            *
+*       Wire 518         *       NULL            *
+*       Wire 519         *       NULL            *
+*       Wire 520         *       NULL            *
+*       Wire 521         *       NULL            *
+*       Wire 522         *       NULL            *
+*       Wire 523         *       NULL            *
+*       Wire 524         *       NULL            *
+*       Wire 525         *       NULL            *
+*       Wire 526         *       NULL            *
+*       Wire 527         *       NULL            *
+*       Wire 528         *       NULL            *
+*       Wire 529         *       NULL            *
+*       Wire 530         *       NULL            *
+*       Wire 531         *       NULL            *
+*       Wire 532         *       NULL            *
+*       Wire 533         *       NULL            *
+*       Wire 534         *       NULL            *
+*       Wire 535         *       NULL            *
+*       Wire 536         *       NULL            *
+*       Wire 537         *       NULL            *
+*       Wire 538         *       NULL            *
+*       Wire 539         *       NULL            *
+*       Wire 540         *       NULL            *
+*       Wire 541         *       NULL            *
+*       Wire 542         *       NULL            *
+*       Wire 543         *       NULL            *
+*       Wire 544         *       NULL            *
+*       Wire 545         *       NULL            *
+*       Wire 546         *       NULL            *
+*       Wire 547         *       NULL            *
+*       Wire 548         *       NULL            *
+*       Wire 549         *       NULL            *
+*       Wire 550         *       NULL            *
+*       Wire 551         *       NULL            *
+*       Wire 552         *       NULL            *
+*       Wire 553         *       NULL            *
+*       Wire 554         *       NULL            *
+*       Wire 555         *       NULL            *
+*       Wire 556         *       NULL            *
+*       Wire 557         *       NULL            *
+*       Wire 558         *       NULL            *
+*       Wire 559         *       NULL            *
+*       Wire 560         *       NULL            *
+*       Wire 561         *       NULL            *
+*       Wire 562         *       NULL            *
+*       Wire 563         *       NULL            *
+*       Wire 564         *       NULL            *
+*       Wire 565         *       NULL            *
+*       Wire 566         *       NULL            *
+*       Wire 567         *       NULL            *
+*       Wire 568         *       NULL            *
+*       Wire 569         *       NULL            *
+*       Wire 570         *       NULL            *
+*       Wire 571         *       NULL            *
+*       Wire 572         *       NULL            *
+*       Wire 573         *       NULL            *
+*       Wire 574         *       NULL            *
+*       Wire 575         *       NULL            *
+*       Wire 576         *       NULL            *
+*       Wire 577         *       NULL            *
+*       Wire 578         *       NULL            *
+*       Wire 579         *       NULL            *
+*       Wire 580         *       NULL            *
+*       Wire 581         *       NULL            *
+*       Wire 582         *       NULL            *
+*       Wire 583         *       NULL            *
+*       Wire 584         *       NULL            *
+*       Wire 585         *       NULL            *
+*       Wire 586         *       NULL            *
+*       Wire 587         *       NULL            *
+*       Wire 588         *       NULL            *
+*       Wire 589         *       NULL            *
+*       Wire 590         *       NULL            *
+*       Wire 591         *       NULL            *
+*       Wire 592         *       NULL            *
+*       Wire 593         *       NULL            *
+*       Wire 594         *       NULL            *
+*       Wire 595         *       NULL            *
+*       Wire 596         *       NULL            *
+*       Wire 597         *       NULL            *
+*       Wire 598         *       NULL            *
+*       Wire 599         *       NULL            *
+*       Wire 600         *       NULL            *
+*       Wire 601         *       NULL            *
+*       Wire 602         *       NULL            *
+*       Wire 603         *       NULL            *
+*       Wire 604         *       NULL            *
+*       Wire 605         *       NULL            *
+*       Wire 606         *       NULL            *
+*       Wire 607         *       NULL            *
+*       Wire 608         *       NULL            *
+*       Wire 609         *       NULL            *
+*       Wire 610         *       NULL            *
+*       Wire 611         *       NULL            *
+*       Wire 612         *       NULL            *
+*       Wire 613         *       NULL            *
+*       Wire 614         *       NULL            *
+*       Wire 615         *       NULL            *
+*       Wire 616         *       NULL            *
+*       Wire 617         *       NULL            *
+*       Wire 618         *       NULL            *
+*       Wire 619         *       NULL            *
+*       Wire 620         *       NULL            *
+*       Wire 621         *       NULL            *
+*       Wire 622         *       NULL            *
+*       Wire 623         *       NULL            *
+*       Wire 624         *       NULL            *
+*       Wire 625         *       NULL            *
+*       Wire 626         *       NULL            *
+*       Wire 627         *       NULL            *
+*       Wire 628         *       NULL            *
+*       Wire 629         *       NULL            *
+*       Wire 630         *       NULL            *
+*       Wire 631         *       NULL            *
+*       Wire 632         *       NULL            *
+*       Wire 633         *       NULL            *
+*       Wire 634         *       NULL            *
+*       Wire 635         *       NULL            *
+*       Wire 636         *       NULL            *
+*       Wire 637         *       NULL            *
+*       Wire 638         *       NULL            *
+*       Wire 639         *       NULL            *
+*       Wire 640         *       NULL            *
+*       Wire 641         *       NULL            *
+*       Wire 642         *       NULL            *
+*       Wire 643         *       NULL            *
+*       Wire 644         *       NULL            *
+*       Wire 645         *       NULL            *
+*       Wire 646         *       NULL            *
+*       Wire 647         *       NULL            *
+*       Wire 648         *       NULL            *
+*       Wire 649         *       NULL            *
+*       Wire 650         *       NULL            *
+*       Wire 651         *       NULL            *
+*       Wire 652         *       NULL            *
+*       Wire 653         *       NULL            *
+*       Wire 654         *       NULL            *
+*       Wire 655         *       NULL            *
+*       Wire 656         *       NULL            *
+*       Wire 657         *       NULL            *
+*       Wire 658         *       NULL            *
+*       Wire 659         *       NULL            *
+*       Wire 660         *       NULL            *
+*       Wire 661         *       NULL            *
+*       Wire 662         *       NULL            *
+*       Wire 663         *       NULL            *
+*       Wire 664         *       NULL            *
+*       Wire 665         *       NULL            *
+*       Wire 666         *       NULL            *
+*       Wire 667         *       NULL            *
+*       Wire 668         *       NULL            *
+*       Wire 669         *       NULL            *
+*       Wire 670         *       NULL            *
+*       Wire 671         *       NULL            *
+*       Wire 672         *       NULL            *
+*       Wire 673         *       NULL            *
+*       Wire 674         *       NULL            *
+*       Wire 675         *       NULL            *
+*       Wire 676         *       NULL            *
+*       Wire 677         *       NULL            *
+*       Wire 678         *       NULL            *
+*       Wire 679         *       NULL            *
+*       Wire 680         *       NULL            *
+*       Wire 681         *       NULL            *
+*       Wire 682         *       NULL            *
+*       Wire 683         *       NULL            *
+*       Wire 684         *       NULL            *
+*       Wire 685         *       NULL            *
+*       Wire 686         *       NULL            *
+*       Wire 687         *       NULL            *
+*       Wire 688         *       NULL            *
+*       Wire 689         *       NULL            *
+*       Wire 690         *       NULL            *
+*       Wire 691         *       NULL            *
+*       Wire 692         *       NULL            *
+*       Wire 693         *       NULL            *
+*       Wire 694         *       NULL            *
+*       Wire 695         *       NULL            *
+*       Wire 696         *       NULL            *
+*       Wire 697         *       NULL            *
+*       Wire 698         *       NULL            *
+*       Wire 699         *       NULL            *
+*       Wire 700         *       NULL            *
+*       Wire 701         *       NULL            *
+*       Wire 702         *       NULL            *
+*       Wire 703         *       NULL            *
+*       Wire 704         *       NULL            *
+*       Wire 705         *       NULL            *
+*       Wire 706         *       NULL            *
+*       Wire 707         *       NULL            *
+*       Wire 708         *       NULL            *
+*       Wire 709         *       NULL            *
+*       Wire 710         *       NULL            *
+*       Wire 711         *       NULL            *
+*       Wire 712         *       NULL            *
+*       Wire 713         *       NULL            *
+*       Wire 714         *       NULL            *
+*       Wire 715         *       NULL            *
+*       Wire 716         *       NULL            *
+*       Wire 717         *       NULL            *
+*       Wire 718         *       NULL            *
+*       Wire 719         *       NULL            *
+*       Wire 720         *       NULL            *
+*       Wire 721         *       NULL            *
+*       Wire 722         *       NULL            *
+*       Wire 723         *       NULL            *
+*       Wire 724         *       NULL            *
+*       Wire 725         *       NULL            *
+*       Wire 726         *       NULL            *
+*       Wire 727         *       NULL            *
+*       Wire 728         *       NULL            *
+*       Wire 729         *       NULL            *
+*       Wire 730         *       NULL            *
+*       Wire 731         *       NULL            *
+*       Wire 732         *       NULL            *
+*       Wire 733         *       NULL            *
+*       Wire 734         *       NULL            *
+*       Wire 735         *       NULL            *
+*       Wire 736         *       NULL            *
+*       Wire 737         *       NULL            *
+*       Wire 738         *       NULL            *
+*       Wire 739         *       NULL            *
+*       Wire 740         *       NULL            *
+*       Wire 741         *       NULL            *
+*       Wire 742         *       NULL            *
+*       Wire 743         *       NULL            *
+*       Wire 744         *       NULL            *
+*       Wire 745         *       NULL            *
+*       Wire 746         *       NULL            *
+*       Wire 747         *       NULL            *
+*       Wire 748         *       NULL            *
+*       Wire 749         *       NULL            *
+*       Wire 750         *       NULL            *
+*       Wire 751         *       NULL            *
+*       Wire 752         *       NULL            *
+*       Wire 753         *       NULL            *
+*       Wire 754         *       NULL            *
+*       Wire 755         *       NULL            *
+*       Wire 756         *       NULL            *
+*       Wire 757         *       NULL            *
+*       Wire 758         *       NULL            *
+*       Wire 759         *       NULL            *
+*       Wire 760         *       NULL            *
+*       Wire 761         *       NULL            *
+*       Wire 762         *       NULL            *
+*       Wire 763         *       NULL            *
+*       Wire 764         *       NULL            *
+*       Wire 765         *       NULL            *
+*       Wire 766         *       NULL            *
+*       Wire 767         *       NULL            *
+*       Wire 768         *       NULL            *
+*       Wire 769         *       NULL            *
+*       Wire 770         *       NULL            *
+*       Wire 771         *       NULL            *
+*       Wire 772         *       NULL            *
+*       Wire 773         *       NULL            *
+*       Wire 774         *       NULL            *
+*       Wire 775         *       NULL            *
+*       Wire 776         *       NULL            *
+*       Wire 777         *       NULL            *
+*       Wire 778         *       NULL            *
+*       Wire 779         *       NULL            *
+*       Wire 780         *       NULL            *
+*       Wire 781         *       NULL            *
+*       Wire 782         *       NULL            *
+*       Wire 783         *       NULL            *
+*       Wire 784         *       NULL            *
+*       Wire 785         *       NULL            *
+*       Wire 786         *       NULL            *
+*       Wire 787         *       NULL            *
+*       Wire 788         *       NULL            *
+*       Wire 789         *       NULL            *
+*       Wire 790         *       NULL            *
+*       Wire 791         *       NULL            *
+*       Wire 792         *       NULL            *
+*       Wire 793         *       NULL            *
+*       Wire 794         *       NULL            *
+*       Wire 795         *       NULL            *
+*       Wire 796         *       NULL            *
+*       Wire 797         *       NULL            *
+*       Wire 798         *       NULL            *
+*       Wire 799         *       NULL            *
+*       Wire 800         *       NULL            *
+*       Wire 801         *       NULL            *
+*       Wire 802         *       NULL            *
+*       Wire 803         *       NULL            *
+*       Wire 804         *       NULL            *
+*       Wire 805         *       NULL            *
+*       Wire 806         *       NULL            *
+*       Wire 807         *       NULL            *
+*       Wire 808         *       NULL            *
+*       Wire 809         *       NULL            *
+*       Wire 810         *       NULL            *
+*       Wire 811         *       NULL            *
+*       Wire 812         *       NULL            *
+*       Wire 813         *       NULL            *
+*       Wire 814         *       NULL            *
+*       Wire 815         *       NULL            *
+*       Wire 816         *       NULL            *
+*       Wire 817         *       NULL            *
+*       Wire 818         *       NULL            *
+*       Wire 819         *       NULL            *
+*       Wire 820         *       NULL            *
+*       Wire 821         *       NULL            *
+*       Wire 822         *       NULL            *
+*       Wire 823         *       NULL            *
+*       Wire 824         *       NULL            *
+*       Wire 825         *       NULL            *
+*       Wire 826         *       NULL            *
+*       Wire 827         *       NULL            *
+*       Wire 828         *       NULL            *
+*       Wire 829         *       NULL            *
+*       Wire 830         *       NULL            *
+*       Wire 831         *       NULL            *
+*       Wire 832         *       NULL            *
+*       Wire 833         *       NULL            *
+*       Wire 834         *       NULL            *
+*       Wire 835         *       NULL            *
+*       Wire 836         *       NULL            *
+*       Wire 837         *       NULL            *
+*       Wire 838         *       NULL            *
+*       Wire 839         *       NULL            *
+*       Wire 840         *       NULL            *
+*       Wire 841         *       NULL            *
+*       Wire 842         *       NULL            *
+*       Wire 843         *       NULL            *
+*       Wire 844         *       NULL            *
+*       Wire 845         *       NULL            *
+*       Wire 846         *       NULL            *
+*       Wire 847         *       NULL            *
+*       Wire 848         *       NULL            *
+*       Wire 849         *       NULL            *
+*       Wire 850         *       NULL            *
+*       Wire 851         *       NULL            *
+*       Wire 852         *       NULL            *
+*       Wire 853         *       NULL            *
+*       Wire 854         *       NULL            *
+*       Wire 855         *       NULL            *
+*       Wire 856         *       NULL            *
+*       Wire 857         *       NULL            *
+*       Wire 858         *       NULL            *
+*       Wire 859         *       NULL            *
+*       Wire 860         *       NULL            *
+*       Wire 861         *       NULL            *
+*       Wire 862         *       NULL            *
+*       Wire 863         *       NULL            *
+*       Wire 864         *       NULL            *
+*       Wire 865         *       NULL            *
+*       Wire 866         *       NULL            *
+*       Wire 867         *       NULL            *
+*       Wire 868         *       NULL            *
+*       Wire 869         *       NULL            *
+*       Wire 870         *       NULL            *
+*       Wire 871         *       NULL            *
+*       Wire 872         *       NULL            *
+*       Wire 873         *       NULL            *
+*       Wire 874         *       NULL            *
+*       Wire 875         *       NULL            *
+*       Wire 876         *       NULL            *
+*       Wire 877         *       NULL            *
+*       Wire 878         *       NULL            *
+*       Wire 879         *       NULL            *
+*       Wire 880         *       NULL            *
+*       Wire 881         *       NULL            *
+*       Wire 882         *       NULL            *
+*       Wire 883         *       NULL            *
+*       Wire 884         *       NULL            *
+*       Wire 885         *       NULL            *
+*       Wire 886         *       NULL            *
+*       Wire 887         *       NULL            *
+*       Wire 888         *       NULL            *
+*       Wire 889         *       NULL            *
+*       Wire 890         *       NULL            *
+*       Wire 891         *       NULL            *
+*       Wire 892         *       NULL            *
+*       Wire 893         *       NULL            *
+*       Wire 894         *       NULL            *
+*       Wire 895         *       NULL            *
+*       Wire 896         *       NULL            *
+*       Wire 897         *       NULL            *
+*       Wire 898         *       NULL            *
+*       Wire 899         *       NULL            *
+*       Wire 900         *       NULL            *
+*       Wire 901         *       NULL            *
+*       Wire 902         *       NULL            *
+*       Wire 903         *       NULL            *
+*       Wire 904         *       NULL            *
+*       Wire 905         *       NULL            *
+*       Wire 906         *       NULL            *
+*       Wire 907         *       NULL            *
+*       Wire 908         *       NULL            *
+*       Wire 909         *       NULL            *
+*       Wire 910         *       NULL            *
+*       Wire 911         *       NULL            *
+*       Wire 912         *       NULL            *
+*       Wire 913         *       NULL            *
+*       Wire 914         *       NULL            *
+*       Wire 915         *       NULL            *
+*       Wire 916         *       NULL            *
+*       Wire 917         *       NULL            *
+*       Wire 918         *       NULL            *
+*       Wire 919         *       NULL            *
+*       Wire 920         *       NULL            *
+*       Wire 921         *       NULL            *
+*       Wire 922         *       NULL            *
+*       Wire 923         *       NULL            *
+*       Wire 924         *       NULL            *
+*       Wire 925         *       NULL            *
+*       Wire 926         *       NULL            *
+*       Wire 927         *       NULL            *
+*       Wire 928         *       NULL            *
+*       Wire 929         *       NULL            *
+*       Wire 930         *       NULL            *
+*       Wire 931         *       NULL            *
+*       Wire 932         *       NULL            *
+*       Wire 933         *       NULL            *
+*       Wire 934         *       NULL            *
+*       Wire 935         *       NULL            *
+*       Wire 936         *       NULL            *
+*       Wire 937         *       NULL            *
+*       Wire 938         *       NULL            *
+*       Wire 939         *       NULL            *
+*       Wire 940         *       NULL            *
+*       Wire 941         *       NULL            *
+*       Wire 942         *       NULL            *
+*       Wire 943         *       NULL            *
+*       Wire 944         *       NULL            *
+*       Wire 945         *       NULL            *
+*       Wire 946         *       NULL            *
+*       Wire 947         *       NULL            *
+*       Wire 948         *       NULL            *
+*       Wire 949         *       NULL            *
+*       Wire 950         *       NULL            *
+*       Wire 951         *       NULL            *
+*       Wire 952         *       NULL            *
+*       Wire 953         *       NULL            *
+*       Wire 954         *       NULL            *
+*       Wire 955         *       NULL            *
+*       Wire 956         *       NULL            *
+*       Wire 957         *       NULL            *
+*       Wire 958         *       NULL            *
+*       Wire 959         *       NULL            *
+*       Wire 960         *       NULL            *
+*       Wire 961         *       NULL            *
+*       Wire 962         *       NULL            *
+*       Wire 963         *       NULL            *
+*       Wire 964         *       NULL            *
+*       Wire 965         *       NULL            *
+*       Wire 966         *       NULL            *
+*       Wire 967         *       NULL            *
+*       Wire 968         *       NULL            *
+*       Wire 969         *       NULL            *
+*       Wire 970         *       NULL            *
+*       Wire 971         *       NULL            *
+*       Wire 972         *       NULL            *
+*       Wire 973         *       NULL            *
+*       Wire 974         *       NULL            *
+*       Wire 975         *       NULL            *
+*       Wire 976         *       NULL            *
+*       Wire 977         *       NULL            *
+*       Wire 978         *       NULL            *
+*       Wire 979         *       NULL            *
+*       Wire 980         *       NULL            *
+*       Wire 981         *       NULL            *
+*       Wire 982         *       NULL            *
+*       Wire 983         *       NULL            *
+*       Wire 984         *       NULL            *
+*       Wire 985         *       NULL            *
+*       Wire 986         *       NULL            *
+*       Wire 987         *       NULL            *
+*       Wire 988         *       NULL            *
+*       Wire 989         *       NULL            *
+*       Wire 990         *       NULL            *
+*       Wire 991         *       NULL            *
+*       Wire 992         *       NULL            *
+*       Wire 993         *       NULL            *
+*       Wire 994         *       NULL            *
+*       Wire 995         *       NULL            *
+*       Wire 996         *       NULL            *
+*       Wire 997         *       NULL            *
+*       Wire 998         *       NULL            *
+*       Wire 999         *       NULL            *
+*       Wire 1000        *       NULL            *
+*       Wire 1001        *       NULL            *
+*       Wire 1002        *       NULL            *
+*       Wire 1003        *       NULL            *
+*       Wire 1004        *       NULL            *
+*       Wire 1005        *       NULL            *
+*       Wire 1006        *       NULL            *
+*       Wire 1007        *       NULL            *
+*       Wire 1008        *       NULL            *
+*       Wire 1009        *       NULL            *
+*       Wire 1010        *       NULL            *
+*       Wire 1011        *       NULL            *
+*       Wire 1012        *       NULL            *
+*       Wire 1013        *       NULL            *
+*       Wire 1014        *       NULL            *
+*       Wire 1015        *       NULL            *
+*       Wire 1016        *       NULL            *
+*       Wire 1017        *       NULL            *
+*       Wire 1018        *       NULL            *
+*       Wire 1019        *       NULL            *
+*       Wire 1020        *       NULL            *
+*       Wire 1021        *       NULL            *
+*       Wire 1022        *       NULL            *
+*       Wire 1023        *       NULL            *
+*       Wire 1024        *       NULL            *
+*       Wire 1025        *       NULL            *
+*       Wire 1026        *       NULL            *
+*       Wire 1027        *       NULL            *
+*       Wire 1028        *       NULL            *
+*       Wire 1029        *       NULL            *
+*       Wire 1030        *       NULL            *
+*       Wire 1031        *       NULL            *
+*       Wire 1032        *       NULL            *
+*       Wire 1033        *       NULL            *
+*       Wire 1034        *       NULL            *
+*       Wire 1035        *       NULL            *
+*       Wire 1036        *       NULL            *
+*       Wire 1037        *       NULL            *
+*       Wire 1038        *       NULL            *
+*       Wire 1039        *       NULL            *
+*       Wire 1040        *       NULL            *
+*       Wire 1041        *       NULL            *
+*       Wire 1042        *       NULL            *
+*       Wire 1043        *       NULL            *
+*       Wire 1044        *       NULL            *
+*       Wire 1045        *       NULL            *
+*       Wire 1046        *       NULL            *
+*       Wire 1047        *       NULL            *
+*       Wire 1048        *       NULL            *
+*       Wire 1049        *       NULL            *
+*       Wire 1050        *       NULL            *
+*       Wire 1051        *       NULL            *
+*       Wire 1052        *       NULL            *
+*       Wire 1053        *       NULL            *
+*       Wire 1054        *       NULL            *
+*       Wire 1055        *       NULL            *
+*       Wire 1056        *       NULL            *
+*       Wire 1057        *       NULL            *
+*       Wire 1058        *       NULL            *
+*       Wire 1059        *       NULL            *
+*       Wire 1060        *       NULL            *
+*       Wire 1061        *       NULL            *
+*       Wire 1062        *       NULL            *
+*       Wire 1063        *       NULL            *
+*       Wire 1064        *       NULL            *
+*       Wire 1065        *       NULL            *
+*       Wire 1066        *       NULL            *
+*       Wire 1067        *       NULL            *
+*       Wire 1068        *       NULL            *
+*       Wire 1069        *       NULL            *
+*       Wire 1070        *       NULL            *
+*       Wire 1071        *       NULL            *
+*       Wire 1072        *       NULL            *
+*       Wire 1073        *       NULL            *
+*       Wire 1074        *       NULL            *
+*       Wire 1075        *       NULL            *
+*       Wire 1076        *       NULL            *
+*       Wire 1077        *       NULL            *
+*       Wire 1078        *       NULL            *
+*       Wire 1079        *       NULL            *
+*       Wire 1080        *       NULL            *
+*       Wire 1081        *       NULL            *
+*       Wire 1082        *       NULL            *
+*       Wire 1083        *       NULL            *
+*       Wire 1084        *       NULL            *
+*       Wire 1085        *       NULL            *
+*       Wire 1086        *       NULL            *
+*       Wire 1087        *       NULL            *
+*       Wire 1088        *       NULL            *
+*       Wire 1089        *       NULL            *
+*       Wire 1090        *       NULL            *
+*       Wire 1091        *       NULL            *
+*       Wire 1092        *       NULL            *
+*       Wire 1093        *       NULL            *
+*       Wire 1094        *       NULL            *
+*       Wire 1095        *       NULL            *
+*       Wire 1096        *       NULL            *
+*       Wire 1097        *       NULL            *
+*       Wire 1098        *       NULL            *
+*       Wire 1099        *       NULL            *
+*       Wire 1100        *       NULL            *
+*       Wire 1101        *       NULL            *
+*       Wire 1102        *       NULL            *
+*       Wire 1103        *       NULL            *
+*       Wire 1104        *       NULL            *
+*       Wire 1105        *       NULL            *
+*       Wire 1106        *       NULL            *
+*       Wire 1107        *       NULL            *
+*       Wire 1108        *       NULL            *
+*       Wire 1109        *       NULL            *
+*       Wire 1110        *       NULL            *
+*       Wire 1111        *       NULL            *
+*       Wire 1112        *       NULL            *
+*       Wire 1113        *       NULL            *
+*       Wire 1114        *       NULL            *
+*       Wire 1115        *       NULL            *
+*       Wire 1116        *       NULL            *
+*       Wire 1117        *       NULL            *
+*       Wire 1118        *       NULL            *
+*       Wire 1119        *       NULL            *
+*       Wire 1120        *       NULL            *
+*       Wire 1121        *       NULL            *
+*       Wire 1122        *       NULL            *
+*       Wire 1123        *       NULL            *
+*       Wire 1124        *       NULL            *
+*       Wire 1125        *       NULL            *
+*       Wire 1126        *       NULL            *
+*       Wire 1127        *       NULL            *
+*       Wire 1128        *       NULL            *
+*       Wire 1129        *       NULL            *
+*       Wire 1130        *       NULL            *
+*       Wire 1131        *       NULL            *
+*       Wire 1132        *       NULL            *
+*       Wire 1133        *       NULL            *
+*       Wire 1134        *       NULL            *
+*       Wire 1135        *       NULL            *
+*       Wire 1136        *       NULL            *
+*       Wire 1137        *       NULL            *
+*       Wire 1138        *       NULL            *
+*       Wire 1139        *       NULL            *
+*       Wire 1140        *       NULL            *
+*       Wire 1141        *       NULL            *
+*       Wire 1142        *       NULL            *
+*       Wire 1143        *       NULL            *
+*       Wire 1144        *       NULL            *
+*       Wire 1145        *       NULL            *
+*       Wire 1146        *       NULL            *
+*       Wire 1147        *       NULL            *
+*       Wire 1148        *       NULL            *
+*       Wire 1149        *       NULL            *
+*       Wire 1150        *       NULL            *
+*       Wire 1151        *       NULL            *
+*       Wire 1152        *       NULL            *
+*       Wire 1153        *       NULL            *
+*       Wire 1154        *       NULL            *
+*       Wire 1155        *       NULL            *
+*       Wire 1156        *       NULL            *
+*       Wire 1157        *       NULL            *
+*       Wire 1158        *       NULL            *
+*       Wire 1159        *       NULL            *
+*       Wire 1160        *       NULL            *
+*       Wire 1161        *       NULL            *
+*       Wire 1162        *       NULL            *
+*       Wire 1163        *       NULL            *
+*       Wire 1164        *       NULL            *
+*       Wire 1165        *       NULL            *
+*       Wire 1166        *       NULL            *
+*       Wire 1167        *       NULL            *
+*       Wire 1168        *       NULL            *
+*       Wire 1169        *       NULL            *
+*       Wire 1170        *       NULL            *
+*       Wire 1171        *       NULL            *
+*       Wire 1172        *       NULL            *
+*       Wire 1173        *       NULL            *
+*       Wire 1174        *       NULL            *
+*       Wire 1175        *       NULL            *
+*       Wire 1176        *       NULL            *
+*       Wire 1177        *       NULL            *
+*       Wire 1178        *       NULL            *
+*       Wire 1179        *       NULL            *
+*       Wire 1180        *       NULL            *
+*       Wire 1181        *       NULL            *
+*       Wire 1182        *       NULL            *
+*       Wire 1183        *       NULL            *
+*       Wire 1184        *       NULL            *
+*       Wire 1185        *       NULL            *
+*       Wire 1186        *       NULL            *
+*       Wire 1187        *       NULL            *
+*       Wire 1188        *       NULL            *
+*       Wire 1189        *       NULL            *
+*       Wire 1190        *       NULL            *
+*       Wire 1191        *       NULL            *
+*       Wire 1192        *       NULL            *
+*       Wire 1193        *       NULL            *
+*       Wire 1194        *       NULL            *
+*       Wire 1195        *       NULL            *
+*       Wire 1196        *       NULL            *
+*       Wire 1197        *       NULL            *
+*       Wire 1198        *       NULL            *
+*       Wire 1199        *       NULL            *
+*       Wire 1200        *       NULL            *
+*       Wire 1201        *       NULL            *
+*       Wire 1202        *       NULL            *
+*       Wire 1203        *       NULL            *
+*       Wire 1204        *       NULL            *
+*       Wire 1205        *       NULL            *
+*       Wire 1206        *       NULL            *
+*       Wire 1207        *       NULL            *
+*       Wire 1208        *       NULL            *
+*       Wire 1209        *       NULL            *
+*       Wire 1210        *       NULL            *
+*       Wire 1211        *       NULL            *
+*       Wire 1212        *       NULL            *
+*       Wire 1213        *       NULL            *
+*       Wire 1214        *       NULL            *
+*       Wire 1215        *       NULL            *
+*       Wire 1216        *       NULL            *
+*       Wire 1217        *       NULL            *
+*       Wire 1218        *       NULL            *
+*       Wire 1219        *       NULL            *
+*       Wire 1220        *       NULL            *
+*       Wire 1221        *       NULL            *
+*       Wire 1222        *       NULL            *
+*       Wire 1223        *       NULL            *
+*       Wire 1224        *       NULL            *
+*       Wire 1225        *       NULL            *
+*       Wire 1226        *       NULL            *
+*       Wire 1227        *       NULL            *
+*       Wire 1228        *       NULL            *
+*       Wire 1229        *       NULL            *
+*       Wire 1230        *       NULL            *
+*       Wire 1231        *       NULL            *
+*       Wire 1232        *       NULL            *
+*       Wire 1233        *       NULL            *
+*       Wire 1234        *       NULL            *
+*       Wire 1235        *       NULL            *
+*       Wire 1236        *       NULL            *
+*       Wire 1237        *       NULL            *
+*       Wire 1238        *       NULL            *
+*       Wire 1239        *       NULL            *
+*       Wire 1240        *       NULL            *
+*       Wire 1241        *       NULL            *
+*       Wire 1242        *       NULL            *
+*       Wire 1243        *       NULL            *
+*       Wire 1244        *       NULL            *
+*       Wire 1245        *       NULL            *
+*       Wire 1246        *       NULL            *
+*       Wire 1247        *       NULL            *
+*       Wire 1248        *       NULL            *
+*       Wire 1249        *       NULL            *
+*       Wire 1250        *       NULL            *
+*       Wire 1251        *       NULL            *
+*       Wire 1252        *       NULL            *
+*       Wire 1253        *       NULL            *
+*       Wire 1254        *       NULL            *
+*       Wire 1255        *       NULL            *
+*       Wire 1256        *       NULL            *
+*       Wire 1257        *       NULL            *
+*       Wire 1258        *       NULL            *
+*       Wire 1259        *       NULL            *
+*       Wire 1260        *       NULL            *
+*       Wire 1261        *       NULL            *
+*       Wire 1262        *       NULL            *
+*       Wire 1263        *       NULL            *
+*       Wire 1264        *       NULL            *
+*       Wire 1265        *       NULL            *
+*       Wire 1266        *       NULL            *
+*       Wire 1267        *       NULL            *
+*       Wire 1268        *       NULL            *
+*       Wire 1269        *       NULL            *
+*       Wire 1270        *       NULL            *
+*       Wire 1271        *       NULL            *
+*       Wire 1272        *       NULL            *
+*       Wire 1273        *       NULL            *
+*       Wire 1274        *       NULL            *
+*       Wire 1275        *       NULL            *
+*       Wire 1276        *       NULL            *
+*       Wire 1277        *       NULL            *
+*       Wire 1278        *       NULL            *
+*       Wire 1279        *       NULL            *
+*       Wire 1280        *       NULL            *
+*       Wire 1281        *       NULL            *
+*       Wire 1282        *       NULL            *
+*       Wire 1283        *       NULL            *
+*       Wire 1284        *       NULL            *
+*       Wire 1285        *       NULL            *
+*       Wire 1286        *       NULL            *
+*       Wire 1287        *       NULL            *
+*       Wire 1288        *       NULL            *
+*       Wire 1289        *       NULL            *
+*       Wire 1290        *       NULL            *
+*       Wire 1291        *       NULL            *
+*       Wire 1292        *       NULL            *
+*       Wire 1293        *       NULL            *
+*       Wire 1294        *       NULL            *
+*       Wire 1295        *       NULL            *
+*       Wire 1296        *       NULL            *
+*       Wire 1297        *       NULL            *
+*       Wire 1298        *       NULL            *
+*       Wire 1299        *       NULL            *
+*       Wire 1300        *       NULL            *
+*       Wire 1301        *       NULL            *
+*       Wire 1302        *       NULL            *
+*       Wire 1303        *       NULL            *
+*       Wire 1304        *       NULL            *
+*       Wire 1305        *       NULL            *
+*       Wire 1306        *       NULL            *
+*       Wire 1307        *       NULL            *
+*       Wire 1308        *       NULL            *
+*       Wire 1309        *       NULL            *
+*       Wire 1310        *       NULL            *
+*       Wire 1311        *       NULL            *
+*       Wire 1312        *       NULL            *
+*       Wire 1313        *       NULL            *
+*       Wire 1314        *       NULL            *
+*       Wire 1315        *       NULL            *
+*       Wire 1316        *       NULL            *
+*       Wire 1317        *       NULL            *
+*       Wire 1318        *       NULL            *
+*       Wire 1319        *       NULL            *
+*       Wire 1320        *       NULL            *
+*       Wire 1321        *       NULL            *
+*       Wire 1322        *       NULL            *
+*       Wire 1323        *       NULL            *
+*       Wire 1324        *       NULL            *
+*       Wire 1325        *       NULL            *
+*       Wire 1326        *       NULL            *
+*       Wire 1327        *       NULL            *
+*       Wire 1328        *       NULL            *
+*       Wire 1329        *       NULL            *
+*       Wire 1330        *       NULL            *
+*       Wire 1331        *       NULL            *
+*       Wire 1332        *       NULL            *
+*       Wire 1333        *       NULL            *
+*       Wire 1334        *       NULL            *
+*       Wire 1335        *       NULL            *
+*       Wire 1336        *       NULL            *
+*       Wire 1337        *       NULL            *
+*       Wire 1338        *       NULL            *
+*       Wire 1339        *       NULL            *
+*       Wire 1340        *       NULL            *
+*       Wire 1341        *       NULL            *
+*       Wire 1342        *       NULL            *
+*       Wire 1343        *       NULL            *
+*       Wire 1344        *       NULL            *
+*       Wire 1345        *       NULL            *
+*       Wire 1346        *       NULL            *
+*       Wire 1347        *       NULL            *
+*       Wire 1348        *       NULL            *
+*       Wire 1349        *       NULL            *
+*       Wire 1350        *       NULL            *
+*       Wire 1351        *       NULL            *
+*       Wire 1352        *       NULL            *
+*       Wire 1353        *       NULL            *
+*       Wire 1354        *       NULL            *
+*       Wire 1355        *       NULL            *
+*       Wire 1356        *       NULL            *
+*       Wire 1357        *       NULL            *
+*       Wire 1358        *       NULL            *
+*       Wire 1359        *       NULL            *
+*       Wire 1360        *       NULL            *
+*       Wire 1361        *       NULL            *
+*       Wire 1362        *       NULL            *
+*       Wire 1363        *       NULL            *
+*       Wire 1364        *       NULL            *
+*       Wire 1365        *       NULL            *
+*       Wire 1366        *       NULL            *
+*       Wire 1367        *       NULL            *
+*       Wire 1368        *       NULL            *
+*       Wire 1369        *       NULL            *
+*       Wire 1370        *       NULL            *
+*       Wire 1371        *       NULL            *
+*       Wire 1372        *       NULL            *
+*       Wire 1373        *       NULL            *
+*       Wire 1374        *       NULL            *
+*       Wire 1375        *       NULL            *
+*       Wire 1376        *       NULL            *
+*       Wire 1377        *       NULL            *
+*       Wire 1378        *       NULL            *
+*       Wire 1379        *       NULL            *
+*       Wire 1380        *       NULL            *
+*       Wire 1381        *       NULL            *
+*       Wire 1382        *       NULL            *
+*       Wire 1383        *       NULL            *
+*       Wire 1384        *       NULL            *
+*       Wire 1385        *       NULL            *
+*       Wire 1386        *       NULL            *
+*       Wire 1387        *       NULL            *
+*       Wire 1388        *       NULL            *
+*       Wire 1389        *       NULL            *
+*       Wire 1390        *       NULL            *
+*       Wire 1391        *       NULL            *
+*       Wire 1392        *       NULL            *
+*       Wire 1393        *       NULL            *
+*       Wire 1394        *       NULL            *
+*       Wire 1395        *       NULL            *
+*       Wire 1396        *       NULL            *
+*       Wire 1397        *       NULL            *
+*       Wire 1398        *       NULL            *
+*       Wire 1399        *       NULL            *
+*       Wire 1400        *       NULL            *
+*       Wire 1401        *       NULL            *
+*       Wire 1402        *       NULL            *
+*       Wire 1403        *       NULL            *
+*       Wire 1404        *       NULL            *
+*       Wire 1405        *       NULL            *
+*       Wire 1406        *       NULL            *
+*       Wire 1407        *       NULL            *
+*       Wire 1408        *       NULL            *
+*       Wire 1409        *       NULL            *
+*       Wire 1410        *       NULL            *
+*       Wire 1411        *       NULL            *
+*       Wire 1412        *       NULL            *
+*       Wire 1413        *       NULL            *
+*       Wire 1414        *       NULL            *
+*       Wire 1415        *       NULL            *
+*       Wire 1416        *       NULL            *
+*       Wire 1417        *       NULL            *
+*       Wire 1418        *       NULL            *
+*       Wire 1419        *       NULL            *
+*       Wire 1420        *       NULL            *
+*       Wire 1421        *       NULL            *
+*       Wire 1422        *       NULL            *
+*       Wire 1423        *       NULL            *
+*       Wire 1424        *       NULL            *
+*       Wire 1425        *       NULL            *
+*       Wire 1426        *       NULL            *
+*       Wire 1427        *       NULL            *
+*       Wire 1428        *       NULL            *
+*       Wire 1429        *       NULL            *
+*       Wire 1430        *       NULL            *
+*       Wire 1431        *       NULL            *
+*       Wire 1432        *       NULL            *
+*       Wire 1433        *       NULL            *
+*       Wire 1434        *       NULL            *
+*       Wire 1435        *       NULL            *
+*       Wire 1436        *       NULL            *
+*       Wire 1437        *       NULL            *
+*       Wire 1438        *       NULL            *
+*       Wire 1439        *       NULL            *
+*       Wire 1440        *       NULL            *
+*       Wire 1441        *       NULL            *
+*       Wire 1442        *       NULL            *
+*       Wire 1443        *       NULL            *
+*       Wire 1444        *       NULL            *
+*       Wire 1445        *       NULL            *
+*       Wire 1446        *       NULL            *
+*       Wire 1447        *       NULL            *
+*       Wire 1448        *       NULL            *
+*       Wire 1449        *       NULL            *
+*       Wire 1450        *       NULL            *
+*       Wire 1451        *       NULL            *
+*       Wire 1452        *       NULL            *
+*       Wire 1453        *       NULL            *
+*       Wire 1454        *       NULL            *
+*       Wire 1455        *       NULL            *
+*       Wire 1456        *       NULL            *
+*       Wire 1457        *       NULL            *
+*       Wire 1458        *       NULL            *
+*       Wire 1459        *       NULL            *
+*       Wire 1460        *       NULL            *
+*       Wire 1461        *       NULL            *
+*       Wire 1462        *       NULL            *
+*       Wire 1463        *       NULL            *
+*       Wire 1464        *       NULL            *
+*       Wire 1465        *       NULL            *
+*       Wire 1466        *       NULL            *
+*       Wire 1467        *       NULL            *
+*       Wire 1468        *       NULL            *
+*       Wire 1469        *       NULL            *
+*       Wire 1470        *       NULL            *
+*       Wire 1471        *       NULL            *
+*       Wire 1472        *       NULL            *
+*       Wire 1473        *       NULL            *
+*       Wire 1474        *       NULL            *
+*       Wire 1475        *       NULL            *
+*       Wire 1476        *       NULL            *
+*       Wire 1477        *       NULL            *
+*       Wire 1478        *       NULL            *
+*       Wire 1479        *       NULL            *
+*       Wire 1480        *       NULL            *
+*       Wire 1481        *       NULL            *
+*       Wire 1482        *       NULL            *
+*       Wire 1483        *       NULL            *
+*       Wire 1484        *       NULL            *
+*       Wire 1485        *       NULL            *
+*       Wire 1486        *       NULL            *
+*       Wire 1487        *       NULL            *
+*       Wire 1488        *       NULL            *
+*       Wire 1489        *       NULL            *
+*       Wire 1490        *       NULL            *
+*       Wire 1491        *       NULL            *
+*       Wire 1492        *       NULL            *
+*       Wire 1493        *       NULL            *
+*       Wire 1494        *       NULL            *
+*       Wire 1495        *       NULL            *
+*       Wire 1496        *       NULL            *
+*       Wire 1497        *       NULL            *
+*       Wire 1498        *       NULL            *
+*       Wire 1499        *       NULL            *
+*       Wire 1500        *       NULL            *
+*       Wire 1501        *       NULL            *
+*       Wire 1502        *       NULL            *
+*       Wire 1503        *       NULL            *
+*       Wire 1504        *       NULL            *
+*       Wire 1505        *       NULL            *
+*       Wire 1506        *       NULL            *
+*       Wire 1507        *       NULL            *
+*       Wire 1508        *       NULL            *
+*       Wire 1509        *       NULL            *
+*       Wire 1510        *       NULL            *
+*       Wire 1511        *       NULL            *
+*       Wire 1512        *       NULL            *
+*       Wire 1513        *       NULL            *
+*       Wire 1514        *       NULL            *
+*       Wire 1515        *       NULL            *
+*       Wire 1516        *       NULL            *
+*       Wire 1517        *       NULL            *
+*       Wire 1518        *       NULL            *
+*       Wire 1519        *       NULL            *
+*       Wire 1520        *       NULL            *
+*       Wire 1521        *       NULL            *
+*       Wire 1522        *       NULL            *
+*       Wire 1523        *       NULL            *
+*       Wire 1524        *       NULL            *
+*       Wire 1525        *       NULL            *
+*       Wire 1526        *       NULL            *
+*       Wire 1527        *       NULL            *
+*       Wire 1528        *       NULL            *
+*       Wire 1529        *       NULL            *
+*       Wire 1530        *       NULL            *
+*       Wire 1531        *       NULL            *
+*       Wire 1532        *       NULL            *
+*       Wire 1533        *       NULL            *
+*       Wire 1534        *       NULL            *
+*       Wire 1535        *       NULL            *
+*       Wire 1536        *       NULL            *
+*       Wire 1537        *       NULL            *
+*       Wire 1538        *       NULL            *
+*       Wire 1539        *       NULL            *
+*       Wire 1540        *       NULL            *
+*       Wire 1541        *       NULL            *
+*       Wire 1542        *       NULL            *
+*       Wire 1543        *       NULL            *
+*       Wire 1544        *       NULL            *
+*       Wire 1545        *       NULL            *
+*       Wire 1546        *       NULL            *
+*       Wire 1547        *       NULL            *
+*       Wire 1548        *       NULL            *
+*       Wire 1549        *       NULL            *
+*       Wire 1550        *       NULL            *
+*       Wire 1551        *       NULL            *
+*       Wire 1552        *       NULL            *
+*       Wire 1553        *       NULL            *
+*       Wire 1554        *       NULL            *
+*       Wire 1555        *       NULL            *
+*       Wire 1556        *       NULL            *
+*       Wire 1557        *       NULL            *
+*       Wire 1558        *       NULL            *
+*       Wire 1559        *       NULL            *
+*       Wire 1560        *       NULL            *
+*       Wire 1561        *       NULL            *
+*       Wire 1562        *       NULL            *
+*       Wire 1563        *       NULL            *
+*       Wire 1564        *       NULL            *
+*       Wire 1565        *       NULL            *
+*       Wire 1566        *       NULL            *
+*       Wire 1567        *       NULL            *
+*       Wire 1568        *       NULL            *
+*       Wire 1569        *       NULL            *
+*       Wire 1570        *       NULL            *
+*       Wire 1571        *       NULL            *
+*       Wire 1572        *       NULL            *
+*       Wire 1573        *       NULL            *
+*       Wire 1574        *       NULL            *
+*       Wire 1575        *       NULL            *
+*       Wire 1576        *       NULL            *
+*       Wire 1577        *       NULL            *
+*       Wire 1578        *       NULL            *
+*       Wire 1579        *       NULL            *
+*       Wire 1580        *       NULL            *
+*       Wire 1581        *       NULL            *
+*       Wire 1582        *       NULL            *
+*       Wire 1583        *       NULL            *
+*       Wire 1584        *       NULL            *
+*       Wire 1585        *       NULL            *
+*       Wire 1586        *       NULL            *
+*       Wire 1587        *       NULL            *
+*       Wire 1588        *       NULL            *
+*       Wire 1589        *       NULL            *
+*       Wire 1590        *       NULL            *
+*       Wire 1591        *       NULL            *
+*       Wire 1592        *       NULL            *
+*       Wire 1593        *       NULL            *
+*       Wire 1594        *       NULL            *
+*       Wire 1595        *       NULL            *
+*       Wire 1596        *       NULL            *
+*       Wire 1597        *       NULL            *
+*       Wire 1598        *       NULL            *
+*       Wire 1599        *       NULL            *
+*       Wire 1600        *       NULL            *
+*       Wire 1601        *       NULL            *
+*       Wire 1602        *       NULL            *
+*       Wire 1603        *       NULL            *
+*       Wire 1604        *       NULL            *
+*       Wire 1605        *       NULL            *
+*       Wire 1606        *       NULL            *
+*       Wire 1607        *       NULL            *
+*       Wire 1608        *       NULL            *
+*       Wire 1609        *       NULL            *
+*       Wire 1610        *       NULL            *
+*       Wire 1611        *       NULL            *
+*       Wire 1612        *       NULL            *
+*       Wire 1613        *       NULL            *
+*       Wire 1614        *       NULL            *
+*       Wire 1615        *       NULL            *
+*       Wire 1616        *       NULL            *
+*       Wire 1617        *       NULL            *
+*       Wire 1618        *       NULL            *
+*       Wire 1619        *       NULL            *
+*       Wire 1620        *       NULL            *
+*       Wire 1621        *       NULL            *
+*       Wire 1622        *       NULL            *
+*       Wire 1623        *       NULL            *
+*       Wire 1624        *       NULL            *
+*       Wire 1625        *       NULL            *
+*       Wire 1626        *       NULL            *
+*       Wire 1627        *       NULL            *
+*       Wire 1628        *       NULL            *
+*       Wire 1629        *       NULL            *
+*       Wire 1630        *       NULL            *
+*       Wire 1631        *       NULL            *
+*       Wire 1632        *       NULL            *
+*       Wire 1633        *       NULL            *
+*       Wire 1634        *       NULL            *
+*       Wire 1635        *       NULL            *
+*       Wire 1636        *       NULL            *
+*       Wire 1637        *       NULL            *
+*       Wire 1638        *       NULL            *
+*       Wire 1639        *       NULL            *
+*       Wire 1640        *       NULL            *
+*       Wire 1641        *       NULL            *
+*       Wire 1642        *       NULL            *
+*       Wire 1643        *       NULL            *
+*       Wire 1644        *       NULL            *
+*       Wire 1645        *       NULL            *
+*       Wire 1646        *       NULL            *
+*       Wire 1647        *       NULL            *
+*       Wire 1648        *       NULL            *
+*       Wire 1649        *       NULL            *
+*       Wire 1650        *       NULL            *
+*       Wire 1651        *       NULL            *
+*       Wire 1652        *       NULL            *
+*       Wire 1653        *       NULL            *
+*       Wire 1654        *       NULL            *
+*       Wire 1655        *       NULL            *
+*       Wire 1656        *       NULL            *
+*       Wire 1657        *       NULL            *
+*       Wire 1658        *       NULL            *
+*       Wire 1659        *       NULL            *
+*       Wire 1660        *       NULL            *
+*       Wire 1661        *       NULL            *
+*       Wire 1662        *       NULL            *
+*       Wire 1663        *       NULL            *
+*       Wire 1664        *       NULL            *
+*       Wire 1665        *       NULL            *
+*       Wire 1666        *       NULL            *
+*       Wire 1667        *       NULL            *
+*       Wire 1668        *       NULL            *
+*       Wire 1669        *       NULL            *
+*       Wire 1670        *       NULL            *
+*       Wire 1671        *       NULL            *
+*       Wire 1672        *       NULL            *
+*       Wire 1673        *       NULL            *
+*       Wire 1674        *       NULL            *
+*       Wire 1675        *       NULL            *
+*       Wire 1676        *       NULL            *
+*       Wire 1677        *       NULL            *
+*       Wire 1678        *       NULL            *
+*       Wire 1679        *       NULL            *
+*       Wire 1680        *       NULL            *
+*       Wire 1681        *       NULL            *
+*       Wire 1682        *       NULL            *
+*       Wire 1683        *       NULL            *
+*       Wire 1684        *       NULL            *
+*       Wire 1685        *       NULL            *
+*       Wire 1686        *       NULL            *
+*       Wire 1687        *       NULL            *
+*       Wire 1688        *       NULL            *
+*       Wire 1689        *       NULL            *
+*       Wire 1690        *       NULL            *
+*       Wire 1691        *       NULL            *
+*       Wire 1692        *       NULL            *
+*       Wire 1693        *       NULL            *
+*       Wire 1694        *       NULL            *
+*       Wire 1695        *       NULL            *
+*       Wire 1696        *       NULL            *
+*       Wire 1697        *       NULL            *
+*       Wire 1698        *       NULL            *
+*       Wire 1699        *       NULL            *
+*       Wire 1700        *       NULL            *
+*       Wire 1701        *       NULL            *
+*       Wire 1702        *       NULL            *
+*       Wire 1703        *       NULL            *
+*       Wire 1704        *       NULL            *
+*       Wire 1705        *       NULL            *
+*       Wire 1706        *       NULL            *
+*       Wire 1707        *       NULL            *
+*       Wire 1708        *       NULL            *
+*       Wire 1709        *       NULL            *
+*       Wire 1710        *       NULL            *
+*       Wire 1711        *       NULL            *
+*       Wire 1712        *       NULL            *
+*       Wire 1713        *       NULL            *
+*       Wire 1714        *       NULL            *
+*       Wire 1715        *       NULL            *
+*       Wire 1716        *       NULL            *
+*       Wire 1717        *       NULL            *
+*       Wire 1718        *       NULL            *
+*       Wire 1719        *       NULL            *
+*       Wire 1720        *       NULL            *
+*       Wire 1721        *       NULL            *
+*       Wire 1722        *       NULL            *
+*       Wire 1723        *       NULL            *
+*       Wire 1724        *       NULL            *
+*       Wire 1725        *       NULL            *
+*       Wire 1726        *       NULL            *
+*       Wire 1727        *       NULL            *
+*       Wire 1728        *       NULL            *
+*       Wire 1729        *       NULL            *
+*       Wire 1730        *       NULL            *
+*       Wire 1731        *       NULL            *
+*       Wire 1732        *       NULL            *
+*       Wire 1733        *       NULL            *
+*       Wire 1734        *       NULL            *
+*       Wire 1735        *       NULL            *
+*       Wire 1736        *       NULL            *
+*       Wire 1737        *       NULL            *
+*       Wire 1738        *       NULL            *
+*       Wire 1739        *       NULL            *
+*       Wire 1740        *       NULL            *
+*       Wire 1741        *       NULL            *
+*       Wire 1742        *       NULL            *
+*       Wire 1743        *       NULL            *
+*       Wire 1744        *       NULL            *
+*       Wire 1745        *       NULL            *
+*       Wire 1746        *       NULL            *
+*       Wire 1747        *       NULL            *
+*       Wire 1748        *       NULL            *
+*       Wire 1749        *       NULL            *
+*       Wire 1750        *       NULL            *
+*       Wire 1751        *       NULL            *
+*       Wire 1752        *       NULL            *
+*       Wire 1753        *       NULL            *
+*       Wire 1754        *       NULL            *
+*       Wire 1755        *       NULL            *
+*       Wire 1756        *       NULL            *
+*       Wire 1757        *       NULL            *
+*       Wire 1758        *       NULL            *
+*       Wire 1759        *       NULL            *
+*       Wire 1760        *       NULL            *
+*       Wire 1761        *       NULL            *
+*       Wire 1762        *       NULL            *
+*       Wire 1763        *       NULL            *
+*       Wire 1764        *       NULL            *
+*       Wire 1765        *       NULL            *
+*       Wire 1766        *       NULL            *
+*       Wire 1767        *       NULL            *
+*       Wire 1768        *       NULL            *
+*       Wire 1769        *       NULL            *
+*       Wire 1770        *       NULL            *
+*       Wire 1771        *       NULL            *
+*       Wire 1772        *       NULL            *
+*       Wire 1773        *       NULL            *
+*       Wire 1774        *       NULL            *
+*       Wire 1775        *       NULL            *
+*       Wire 1776        *       NULL            *
+*       Wire 1777        *       NULL            *
+*       Wire 1778        *       NULL            *
+*       Wire 1779        *       NULL            *
+*       Wire 1780        *       NULL            *
+*       Wire 1781        *       NULL            *
+*       Wire 1782        *       NULL            *
+*       Wire 1783        *       NULL            *
+*       Wire 1784        *       NULL            *
+*       Wire 1785        *       NULL            *
+*       Wire 1786        *       NULL            *
+*       Wire 1787        *       NULL            *
+*       Wire 1788        *       NULL            *
+*       Wire 1789        *       NULL            *
+*       Wire 1790        *       NULL            *
+*       Wire 1791        *       NULL            *
+*       Wire 1792        *       NULL            *
+*       Wire 1793        *       NULL            *
+*       Wire 1794        *       NULL            *
+*       Wire 1795        *       NULL            *
+*       Wire 1796        *       NULL            *
+*       Wire 1797        *       NULL            *
+*       Wire 1798        *       NULL            *
+*       Wire 1799        *       NULL            *
+*       Wire 1800        *       NULL            *
+*       Wire 1801        *       NULL            *
+*       Wire 1802        *       NULL            *
+*       Wire 1803        *       NULL            *
+*       Wire 1804        *       NULL            *
+*       Wire 1805        *       NULL            *
+*       Wire 1806        *       NULL            *
+*       Wire 1807        *       NULL            *
+*       Wire 1808        *       NULL            *
+*       Wire 1809        *       NULL            *
+*       Wire 1810        *       NULL            *
+*       Wire 1811        *       NULL            *
+*       Wire 1812        *       NULL            *
+*       Wire 1813        *       NULL            *
+*       Wire 1814        *       NULL            *
+*       Wire 1815        *       NULL            *
+*       Wire 1816        *       NULL            *
+*       Wire 1817        *       NULL            *
+*       Wire 1818        *       NULL            *
+*       Wire 1819        *       NULL            *
+*       Wire 1820        *       NULL            *
+*       Wire 1821        *       NULL            *
+*       Wire 1822        *       NULL            *
+*       Wire 1823        *       NULL            *
+*       Wire 1824        *       NULL            *
+*       Wire 1825        *       NULL            *
+*       Wire 1826        *       NULL            *
+*       Wire 1827        *       NULL            *
+*       Wire 1828        *       NULL            *
+*       Wire 1829        *       NULL            *
+*       Wire 1830        *       NULL            *
+*       Wire 1831        *       NULL            *
+*       Wire 1832        *       NULL            *
+*       Wire 1833        *       NULL            *
+*       Wire 1834        *       NULL            *
+*       Wire 1835        *       NULL            *
+*       Wire 1836        *       NULL            *
+*       Wire 1837        *       NULL            *
+*       Wire 1838        *       NULL            *
+*       Wire 1839        *       NULL            *
+*       Wire 1840        *       NULL            *
+*       Wire 1841        *       NULL            *
+*       Wire 1842        *       NULL            *
+*       Wire 1843        *       NULL            *
+*       Wire 1844        *       NULL            *
+*       Wire 1845        *       NULL            *
+*       Wire 1846        *       NULL            *
+*       Wire 1847        *       NULL            *
+*       Wire 1848        *       NULL            *
+*       Wire 1849        *       NULL            *
+*       Wire 1850        *       NULL            *
+*       Wire 1851        *       NULL            *
+*       Wire 1852        *       NULL            *
+*       Wire 1853        *       NULL            *
+*       Wire 1854        *       NULL            *
+*       Wire 1855        *       NULL            *
+*       Wire 1856        *       NULL            *
+*       Wire 1857        *       NULL            *
+*       Wire 1858        *       NULL            *
+*       Wire 1859        *       NULL            *
+*       Wire 1860        *       NULL            *
+*       Wire 1861        *       NULL            *
+*       Wire 1862        *       NULL            *
+*       Wire 1863        *       NULL            *
+*       Wire 1864        *       NULL            *
+*       Wire 1865        *       NULL            *
+*       Wire 1866        *       NULL            *
+*       Wire 1867        *       NULL            *
+*       Wire 1868        *       NULL            *
+*       Wire 1869        *       NULL            *
+*       Wire 1870        *       NULL            *
+*       Wire 1871        *       NULL            *
+*       Wire 1872        *       NULL            *
+*       Wire 1873        *       NULL            *
+*       Wire 1874        *       NULL            *
+*       Wire 1875        *       NULL            *
+*       Wire 1876        *       NULL            *
+*       Wire 1877        *       NULL            *
+*       Wire 1878        *       NULL            *
+*       Wire 1879        *       NULL            *
+*       Wire 1880        *       NULL            *
+*       Wire 1881        *       NULL            *
+*       Wire 1882        *       NULL            *
+*       Wire 1883        *       NULL            *
+*       Wire 1884        *       NULL            *
+*       Wire 1885        *       NULL            *
+*       Wire 1886        *       NULL            *
+*       Wire 1887        *       NULL            *
+*       Wire 1888        *       NULL            *
+*       Wire 1889        *       NULL            *
+*       Wire 1890        *       NULL            *
+*       Wire 1891        *       NULL            *
+*       Wire 1892        *       NULL            *
+*       Wire 1893        *       NULL            *
+*       Wire 1894        *       NULL            *
+*       Wire 1895        *       NULL            *
+*       Wire 1896        *       NULL            *
+*       Wire 1897        *       NULL            *
+*       Wire 1898        *       NULL            *
+*       Wire 1899        *       NULL            *
+*       Wire 1900        *       NULL            *
+*       Wire 1901        *       NULL            *
+*       Wire 1902        *       NULL            *
+*       Wire 1903        *       NULL            *
+*       Wire 1904        *       NULL            *
+*       Wire 1905        *       NULL            *
+*       Wire 1906        *       NULL            *
+*       Wire 1907        *       NULL            *
+*       Wire 1908        *       NULL            *
+*       Wire 1909        *       NULL            *
+*       Wire 1910        *       NULL            *
+*       Wire 1911        *       NULL            *
+*       Wire 1912        *       NULL            *
+*       Wire 1913        *       NULL            *
+*       Wire 1914        *       NULL            *
+*       Wire 1915        *       NULL            *
+*       Wire 1916        *       NULL            *
+*       Wire 1917        *       NULL            *
+*       Wire 1918        *       NULL            *
+*       Wire 1919        *       NULL            *
+*       Wire 1920        *       NULL            *
+*       Wire 1921        *       NULL            *
+*       Wire 1922        *       NULL            *
+*       Wire 1923        *       NULL            *
+*       Wire 1924        *       NULL            *
+*       Wire 1925        *       NULL            *
+*       Wire 1926        *       NULL            *
+*       Wire 1927        *       NULL            *
+*       Wire 1928        *       NULL            *
+*       Wire 1929        *       NULL            *
+*       Wire 1930        *       NULL            *
+*       Wire 1931        *       NULL            *
+*       Wire 1932        *       NULL            *
+*       Wire 1933        *       NULL            *
+*       Wire 1934        *       NULL            *
+*       Wire 1935        *       NULL            *
+*       Wire 1936        *       NULL            *
+*       Wire 1937        *       NULL            *
+*       Wire 1938        *       NULL            *
+*       Wire 1939        *       NULL            *
+*       Wire 1940        *       NULL            *
+*       Wire 1941        *       NULL            *
+*       Wire 1942        *       NULL            *
+*       Wire 1943        *       NULL            *
+*       Wire 1944        *       NULL            *
+*       Wire 1945        *       NULL            *
+*       Wire 1946        *       NULL            *
+*       Wire 1947        *       NULL            *
+*       Wire 1948        *       NULL            *
+*       Wire 1949        *       NULL            *
+*       Wire 1950        *       NULL            *
+*       Wire 1951        *       NULL            *
+*       Wire 1952        *       NULL            *
+*       Wire 1953        *       NULL            *
+*       Wire 1954        *       NULL            *
+*       Wire 1955        *       NULL            *
+*       Wire 1956        *       NULL            *
+*       Wire 1957        *       NULL            *
+*       Wire 1958        *       NULL            *
+*       Wire 1959        *       NULL            *
+*       Wire 1960        *       NULL            *
+*       Wire 1961        *       NULL            *
+*       Wire 1962        *       NULL            *
+*       Wire 1963        *       NULL            *
+*       Wire 1964        *       NULL            *
+*       Wire 1965        *       NULL            *
+*       Wire 1966        *       NULL            *
+*       Wire 1967        *       NULL            *
+*       Wire 1968        *       NULL            *
+*       Wire 1969        *       NULL            *
+*       Wire 1970        *       NULL            *
+*       Wire 1971        *       NULL            *
+*       Wire 1972        *       NULL            *
+*       Wire 1973        *       NULL            *
+*       Wire 1974        *       NULL            *
+*       Wire 1975        *       NULL            *
+*       Wire 1976        *       NULL            *
+*       Wire 1977        *       NULL            *
+*       Wire 1978        *       NULL            *
+*       Wire 1979        *       NULL            *
+*       Wire 1980        *       NULL            *
+*       Wire 1981        *       NULL            *
+*       Wire 1982        *       NULL            *
+*       Wire 1983        *       NULL            *
+*       Wire 1984        *       NULL            *
+*       Wire 1985        *       NULL            *
+*       Wire 1986        *       NULL            *
+*       Wire 1987        *       NULL            *
+*       Wire 1988        *       NULL            *
+*       Wire 1989        *       NULL            *
+*       Wire 1990        *       NULL            *
+*       Wire 1991        *       NULL            *
+*       Wire 1992        *       NULL            *
+*       Wire 1993        *       NULL            *
+*       Wire 1994        *       NULL            *
+*       Wire 1995        *       NULL            *
+*       Wire 1996        *       NULL            *
+*       Wire 1997        *       NULL            *
+*       Wire 1998        *       NULL            *
+*       Wire 1999        *       NULL            *
+*       Wire 2000        *       NULL            *
+*       Wire 2001        *       NULL            *
+*       Wire 2002        *       NULL            *
+*       Wire 2003        *       NULL            *
+*       Wire 2004        *       NULL            *
+*       Wire 2005        *       NULL            *
+*       Wire 2006        *       NULL            *
+*       Wire 2007        *       NULL            *
+*       Wire 2008        *       NULL            *
+*       Wire 2009        *       NULL            *
+*       Wire 2010        *       NULL            *
+**************************************************
